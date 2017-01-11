@@ -13,6 +13,7 @@ project(QPPVM_RT_plugin)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(XCM REQUIRED)
+FIND_PACKAGE(iDynTree REQUIRED)
 find_package(idynutils REQUIRED)
 find_package(OpenSoT REQUIRED)
 
@@ -39,6 +40,7 @@ endif()
 # include 
 include_directories(include
                     ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${idynutils_INCLUDE_DIRS}
+                    ${iDynTree_INCLUDE_DIRS}
                     )
 
 ###########
@@ -53,7 +55,8 @@ endif()
 ##########
 ## Link ##
 ##########
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${idynutils_LIBRARIES})
+target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${idynutils_LIBRARIES}
+                      ${iDynTree_LIBRARIES})
 
 #############
 ## Install ##

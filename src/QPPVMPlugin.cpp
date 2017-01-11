@@ -28,16 +28,16 @@ bool QPPVMPlugin::init_control_plugin(std::string path_to_config_file,
                                  XBot::SharedMemory::Ptr shared_memory,
                                  XBot::RobotInterface::Ptr robot)
 {
-    _robot->sense();
-
     _robot = robot;
     Eigen::VectorXd tau_max;
     _robot->getEffortLimits(tau_max);
+    _tau_d.resize(_robot->getJointNum());
+    _tau_d.setZero(_tau_d.size());
 
-    _robot->getJointPosition(_q);
+    sense();
 
     _torque_limits.reset(new TorqueLimits(tau_max));
-    _joint_task.reset(new JointImpedanceCtrl(_q, _robot));
+    _joint_task.reset(new JointImpedanceCtrl(_q, _robot->model()));
 
     QPOases_sot::Stack stack_of_tasks;
     stack_of_tasks.push_back(_joint_task);
@@ -47,8 +47,25 @@ bool QPPVMPlugin::init_control_plugin(std::string path_to_config_file,
 
 void QPPVMPlugin::control_loop(double time, double period)
 {
+    sense();
 
+    _torque_limits->update(_q);
+    _joint_task->update(_q);
+
+    if(!_solver->solve(_tau_d))
+        _tau_d.setZero(_tau_d.size());
+
+    _robot->setEffortReference(_tau_d);
+    _robot->move();
 }
+
+void QPPVMPlugin::sense()
+{
+    _robot->sense();
+    _robot->getJointPosition(_q);
+    _robot->getJointVelocity(_dq);
+}
+
 
 bool QPPVMPlugin::close()
 {

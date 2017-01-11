@@ -44,7 +44,6 @@ namespace demo {
     private:
         
         XBot::RobotInterface::Ptr _robot;
-        XBot::ModelInterface::Ptr _model;
 
         OpenSoT::solvers::QPOases_sot::Ptr _solver;
 
@@ -52,7 +51,12 @@ namespace demo {
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
 
         Eigen::VectorXd _q;
-        
+        Eigen::VectorXd _dq;
+
+        Eigen::VectorXd _tau_d;
+
+        void sense();
+
     };
     
 }
