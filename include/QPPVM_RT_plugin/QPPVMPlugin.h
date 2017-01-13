@@ -52,6 +52,10 @@ namespace demo {
 
         Eigen::VectorXd _q;
         Eigen::VectorXd _dq;
+        Eigen::VectorXd _q_ref;
+        
+        Eigen::VectorXd _k;
+        Eigen::VectorXd _d;
 
         Eigen::VectorXd _tau_d;
 
