@@ -31,23 +31,48 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                         XBot::RobotInterface::Ptr robot)
 {
     _robot = robot;
-    Eigen::VectorXd tau_max;
-    _robot->model().getEffortLimits(tau_max);
+
+    _robot->model().getEffortLimits(_tau_max);
+    _tau_min = -_tau_max;
+
     _tau_d.resize(_robot->model().getJointNum());
     _tau_d.setZero(_tau_d.size());
 
     sense();
-    
+    _robot->model().computeNonlinearTerm(_h);
+    _tau_max = _tau_max-_h;
+    _tau_min = _tau_min-_h;
+
     _q_ref = _q;
+    
+//    _q_ref[0] = 0.0;
+
+//    _q_ref[1] = 0.0;
+//    _q_ref[2] = -0.3;
+//    _q_ref[3] = -0.8;
+//    _q_ref[4] = -0.8;
+//    _q_ref[5] = 0.0;
+//    _q_ref[6] = -0.8;
+//    _q_ref[7] = 0.0;
+
+//    _q_ref[8] = 0.0;
+//    _q_ref[9] = 0.3;
+//    _q_ref[10] = 0.8;
+//    _q_ref[11] = 0.8;
+//    _q_ref[12] = 0.0;
+//    _q_ref[13] = 0.8;
+//    _q_ref[14] = 0.0;
+
+
     _k.setZero(_robot->getJointNum());
     _d.setZero(_robot->getJointNum());
     
-    Eigen::MatrixXd _k_matrix = 1000 * Eigen::MatrixXd::Identity(_robot->model().getJointNum(), _robot->model().getJointNum());
+    Eigen::MatrixXd _k_matrix = 1000. * Eigen::MatrixXd::Identity(_robot->model().getJointNum(), _robot->model().getJointNum());
 
-    _torque_limits.reset(new TorqueLimits(tau_max));
+    _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
     _joint_task.reset(new JointImpedanceCtrl(_q, _robot->model()));
     _joint_task->setStiffness(_k_matrix);
-    _joint_task->setDamping(_k_matrix*0.001);
+    _joint_task->setDamping(_k_matrix*0.01);
     _joint_task->useInertiaMatrix(true);
     _joint_task->update(_q);
 
@@ -55,20 +80,31 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     stack_of_tasks.push_back(_joint_task);
 
     _solver.reset(new QPOases_sot(stack_of_tasks, _torque_limits, 2e12));
+
+    return true;
 }
 
 void QPPVMPlugin::control_loop(double time, double period)
 {
     sense();
+    _robot->model().computeNonlinearTerm(_h);
+
+    _robot->model().getEffortLimits(_tau_max);
+    _tau_min = -_tau_max;
+    _tau_max = _tau_max-_h;
+    _tau_min = _tau_min-_h;
     
-    _q_ref(_robot->getDofIndex(_robot->chain("left_arm").getJointId(0))) = -90. * M_PI / 180. ;
     _joint_task->setReference(_q_ref);
+    _torque_limits->setTorqueLimits(_tau_max, _tau_min);
     
     _torque_limits->update(_q);
     _joint_task->update(_q);
 
     if(!_solver->solve(_tau_d))
         _tau_d.setZero(_tau_d.size());
+
+
+    _tau_d = _tau_d + _h;
 
     _robot->setStiffness(_k);
     _robot->setDamping(_d);
@@ -78,7 +114,7 @@ void QPPVMPlugin::control_loop(double time, double period)
     _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
     
 //     _robot->printTracking();
-    _robot->move();
+    //_robot->move();
 }
 
 void QPPVMPlugin::sense()

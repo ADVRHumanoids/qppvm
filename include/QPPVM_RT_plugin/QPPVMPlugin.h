@@ -58,6 +58,10 @@ namespace demo {
         Eigen::VectorXd _d;
 
         Eigen::VectorXd _tau_d;
+        Eigen::VectorXd _h;
+
+        Eigen::VectorXd _tau_max;
+        Eigen::VectorXd _tau_min;
 
         void sense();
 
