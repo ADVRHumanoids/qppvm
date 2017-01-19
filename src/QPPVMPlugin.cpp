@@ -90,7 +90,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     _solver.reset(new QPOases_sot(stack_of_tasks, _torque_limits, 2e12));
     
-    _matlogger = XBot::MatLogger::getLogger("tau_ref");
+    _matlogger = XBot::MatLogger::getLogger("qppvm_logger", "/tmp/qppvm_logger.m");
 
     return true;
 }
@@ -126,6 +126,7 @@ void QPPVMPlugin::control_loop(double time, double period)
     _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
     
     DPRINTF("%f \n", _tau_d[0]);
+    _matlogger->add("tau_desired", _tau_d);
     
 //     _robot->printTracking();
     //_robot->move();
