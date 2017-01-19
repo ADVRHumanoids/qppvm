@@ -19,8 +19,8 @@
 
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
 
-#include <rtdk.h>
-#define DPRINTF rt_printf
+// #include <rtdk.h>
+// #define DPRINTF rt_printf
 
 SHLIBPP_DEFINE_SHARED_SUBCLASS(QPPVMPlugin_factory, demo::QPPVMPlugin, XBot::XBotControlPlugin);
 
@@ -29,7 +29,8 @@ using namespace OpenSoT::constraints::torque;
 using namespace OpenSoT::tasks::torque;
 using namespace OpenSoT::solvers;
 
-QPPVMPlugin::QPPVMPlugin()
+QPPVMPlugin::QPPVMPlugin() : 
+    _matlogger("log", "/tmp/TEST.m")
 {
     
 }
@@ -48,7 +49,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     sense();
     //_robot->model().computeNonlinearTerm(_h);
-    _h.setZero(_h.size());
+    _h.setZero(_tau_d.size());
     _tau_max = _tau_max-_h;
     _tau_min = _tau_min-_h;
 
@@ -90,8 +91,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     _solver.reset(new QPOases_sot(stack_of_tasks, _torque_limits, 2e12));
     
-    _matlogger = XBot::MatLogger::getLogger("qppvm_logger", "/tmp/qppvm_logger.m");
-
+//     _matlogger = XBot::MatLogger::getLogger("qppvm_logger", "/tmp/qppvm_logger.m");
     return true;
 }
 
@@ -114,7 +114,7 @@ void QPPVMPlugin::control_loop(double time, double period)
 
     if(!_solver->solve(_tau_d)){
         _tau_d.setZero(_tau_d.size());
-        DPRINTF("SOLVER ERROR! \n");}
+        /*DPRINTF("SOLVER ERROR! \n");*/}
 
     _tau_d = _tau_d + _h;
 
@@ -125,8 +125,8 @@ void QPPVMPlugin::control_loop(double time, double period)
     _robot->model().setJointEffort(_tau_d);
     _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
     
-    DPRINTF("%f \n", _tau_d[0]);
-    _matlogger->add("tau_desired", _tau_d);
+//     DPRINTF("%f \n", _tau_d[0]);
+    _matlogger.add("tau_desired", _tau_d);
     
 //     _robot->printTracking();
     //_robot->move();

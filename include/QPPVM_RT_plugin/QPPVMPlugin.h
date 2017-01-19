@@ -49,7 +49,7 @@ namespace demo {
         
         XBot::RobotInterface::Ptr _robot;
         
-        XBot::MatLogger::Ptr _matlogger;
+        XBot::SPDMatLogger _matlogger;
 
         OpenSoT::solvers::QPOases_sot::Ptr _solver;
 
