@@ -19,12 +19,20 @@
 
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
 
+#include <rtdk.h>
+#define DPRINTF rt_printf
+
 SHLIBPP_DEFINE_SHARED_SUBCLASS(QPPVMPlugin_factory, demo::QPPVMPlugin, XBot::XBotControlPlugin);
 
 using namespace demo;
 using namespace OpenSoT::constraints::torque;
 using namespace OpenSoT::tasks::torque;
 using namespace OpenSoT::solvers;
+
+QPPVMPlugin::QPPVMPlugin()
+{
+    
+}
 
 bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                         XBot::SharedMemory::Ptr shared_memory,
@@ -80,6 +88,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     stack_of_tasks.push_back(_joint_task);
 
     _solver.reset(new QPOases_sot(stack_of_tasks, _torque_limits, 2e12));
+    
+    _matlogger = XBot::MatLogger::getLogger("tau_ref");
 
     return true;
 }
@@ -100,9 +110,9 @@ void QPPVMPlugin::control_loop(double time, double period)
     _torque_limits->update(_q);
     _joint_task->update(_q);
 
-    if(!_solver->solve(_tau_d))
+    if(!_solver->solve(_tau_d)){
         _tau_d.setZero(_tau_d.size());
-
+        DPRINTF("SOLVER ERROR! \n");}
 
     _tau_d = _tau_d + _h;
 
@@ -112,6 +122,8 @@ void QPPVMPlugin::control_loop(double time, double period)
     // set the joint effort on the model and then synchronize the effort on the robot
     _robot->model().setJointEffort(_tau_d);
     _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
+    
+    DPRINTF("%f \n", _tau_d[0]);
     
 //     _robot->printTracking();
     //_robot->move();

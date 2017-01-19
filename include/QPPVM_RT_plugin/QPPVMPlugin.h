@@ -27,11 +27,15 @@
 #include <OpenSoT/constraints/torque/TorqueLimits.h>
 
 
+#include <XBotInterface/Logger.hpp>
+
 namespace demo {
 
     class QPPVMPlugin : public XBot::XBotControlPlugin {
       
     public:
+        
+        QPPVMPlugin();
         
         virtual bool init_control_plugin(std::string path_to_config_file, 
                                          XBot::SharedMemory::Ptr shared_memory, 
@@ -44,6 +48,8 @@ namespace demo {
     private:
         
         XBot::RobotInterface::Ptr _robot;
+        
+        XBot::MatLogger::Ptr _matlogger;
 
         OpenSoT::solvers::QPOases_sot::Ptr _solver;
 
@@ -62,6 +68,7 @@ namespace demo {
 
         Eigen::VectorXd _tau_max;
         Eigen::VectorXd _tau_min;
+        
 
         void sense();
 

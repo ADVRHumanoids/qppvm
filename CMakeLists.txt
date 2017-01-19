@@ -13,8 +13,8 @@ project(QPPVM_RT_plugin)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(XCM REQUIRED)
-FIND_PACKAGE(iDynTree REQUIRED)
-find_package(idynutils REQUIRED)
+# FIND_PACKAGE(iDynTree REQUIRED)
+# find_package(idynutils REQUIRED)
 find_package(OpenSoT REQUIRED)
 
 set(ENABLE_XENO CACHE BOOL "ON")
