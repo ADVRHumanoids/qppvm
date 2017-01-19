@@ -49,7 +49,7 @@ include_directories(include
 add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 
 if ( Xenomai_FOUND )
-    set_xeno_flags(QPPVMPlugin)
+#     set_xeno_flags(QPPVMPlugin)
 endif()
 
 ##########
