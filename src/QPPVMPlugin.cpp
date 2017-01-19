@@ -48,7 +48,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     sense();
     //_robot->model().computeNonlinearTerm(_h);
-    _h.setZero(_h.size());
+    _h.setZero(_tau_d.size());
     _tau_max = _tau_max-_h;
     _tau_min = _tau_min-_h;
 
