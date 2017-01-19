@@ -47,7 +47,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _tau_d.setZero(_tau_d.size());
 
     sense();
-    _robot->model().computeNonlinearTerm(_h);
+    //_robot->model().computeNonlinearTerm(_h);
+    _h.setZero(_h.size());
     _tau_max = _tau_max-_h;
     _tau_min = _tau_min-_h;
 
@@ -81,7 +82,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _joint_task.reset(new JointImpedanceCtrl(_q, _robot->model()));
     _joint_task->setStiffness(_k_matrix);
     _joint_task->setDamping(_k_matrix*0.01);
-    _joint_task->useInertiaMatrix(true);
+    _joint_task->useInertiaMatrix(false);
     _joint_task->update(_q);
 
     QPOases_sot::Stack stack_of_tasks;
@@ -97,7 +98,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 void QPPVMPlugin::control_loop(double time, double period)
 {
     sense();
-    _robot->model().computeNonlinearTerm(_h);
+    //_robot->model().computeNonlinearTerm(_h);
+    _h.setZero(_h.size());
 
     _robot->model().getEffortLimits(_tau_max);
     _tau_min = -_tau_max;
