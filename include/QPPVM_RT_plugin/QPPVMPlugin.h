@@ -59,6 +59,7 @@ namespace demo {
         Eigen::VectorXd _q;
         Eigen::VectorXd _dq;
         Eigen::VectorXd _q_ref;
+        Eigen::VectorXd _q_home;
         
         Eigen::VectorXd _k;
         Eigen::VectorXd _d;
@@ -69,6 +70,7 @@ namespace demo {
         Eigen::VectorXd _tau_max;
         Eigen::VectorXd _tau_min;
         
+        bool _homing_done;
 
         void sense();
 

@@ -54,25 +54,27 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _tau_min = _tau_min-_h;
 
     _q_ref = _q;
+    _q_home = _q;
     
-//    _q_ref[0] = 0.0;
+    _q_home[0] = 0.0;
 
-//    _q_ref[1] = 0.0;
-//    _q_ref[2] = -0.3;
-//    _q_ref[3] = -0.8;
-//    _q_ref[4] = -0.8;
-//    _q_ref[5] = 0.0;
-//    _q_ref[6] = -0.8;
-//    _q_ref[7] = 0.0;
+    _q_home[1] = 0.0;
+    _q_home[2] = -0.3;
+    _q_home[3] = -0.8;
+    _q_home[4] = -0.8;
+    _q_home[5] = 0.0;
+    _q_home[6] = -0.8;
+    _q_home[7] = 0.0;
 
-//    _q_ref[8] = 0.0;
-//    _q_ref[9] = 0.3;
-//    _q_ref[10] = 0.8;
-//    _q_ref[11] = 0.8;
-//    _q_ref[12] = 0.0;
-//    _q_ref[13] = 0.8;
-//    _q_ref[14] = 0.0;
+    _q_home[8] = 0.0;
+    _q_home[9] = 0.3;
+    _q_home[10] = 0.8;
+    _q_home[11] = 0.8;
+    _q_home[12] = 0.0;
+    _q_home[13] = 0.8;
+    _q_home[14] = 0.0;
 
+    _homing_done = false;
 
     _k.setZero(_robot->getJointNum());
     _d.setZero(_robot->getJointNum());
@@ -123,6 +125,8 @@ void QPPVMPlugin::control_loop(double time, double period)
     
     // set the joint effort on the model and then synchronize the effort on the robot
     _robot->model().setJointEffort(_tau_d);
+
+
     _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
     
 //     DPRINTF("%f \n", _tau_d[0]);
