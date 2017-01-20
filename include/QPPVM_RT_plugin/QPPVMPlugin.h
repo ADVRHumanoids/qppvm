@@ -58,7 +58,7 @@ namespace demo {
 
         Eigen::VectorXd _q;
         Eigen::VectorXd _dq;
-        Eigen::VectorXd _q_ref;
+        Eigen::VectorXd _q_ref, _q0;
         Eigen::VectorXd _q_home;
         
         Eigen::VectorXd _k;
@@ -72,7 +72,11 @@ namespace demo {
         
         bool _homing_done;
 
+        double _homing_time;
+
         void sense();
+
+        void QPPVMControl();
 
     };
     
