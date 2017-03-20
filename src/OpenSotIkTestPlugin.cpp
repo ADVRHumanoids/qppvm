@@ -29,7 +29,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
                                                             _model->chain("left_arm").getTipLinkName(),
                                                             "world"
                                                             ) );
-    _left_ee->setLambda(100);
+//     _left_ee->setLambda(100);
 
     _right_ee.reset( new OpenSoT::tasks::velocity::Cartesian("CARTESIAN_RIGHT",
                                                              _q0,
@@ -37,7 +37,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
                                                              _model->chain("right_arm").getTipLinkName(),
                                                              "world"
                                                              ) );
-    _right_ee->setLambda(100);
+//     _right_ee->setLambda(100);
 
     /* Create postural task */
     _postural.reset( new OpenSoT::tasks::velocity::Postural(_qhome) );
@@ -105,7 +105,7 @@ void OpenSotIkTestPlugin::control_loop(double time, double period)
     }
 
     /* Update q */
-    _q += period * _dq;
+    _q += _dq;
 
     /* Send command to motors */
     _robot->setReferenceFrom(*_model);
