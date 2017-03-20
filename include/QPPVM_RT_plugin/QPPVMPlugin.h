@@ -32,24 +32,27 @@
 namespace demo {
 
     class QPPVMPlugin : public XBot::XBotControlPlugin {
-      
+
     public:
-        
+
         QPPVMPlugin();
-        
-        virtual bool init_control_plugin(std::string path_to_config_file, 
-                                         XBot::SharedMemory::Ptr shared_memory, 
+
+        virtual bool init_control_plugin(std::string path_to_config_file,
+                                         XBot::SharedMemory::Ptr shared_memory,
                                          XBot::RobotInterface::Ptr robot);
+        virtual void on_start(double time);
         virtual void control_loop(double time, double period);
         virtual bool close();
-            
+
     protected:
-        
+
     private:
-        
+
+        double _start_time;
+
         XBot::RobotInterface::Ptr _robot;
-        
-        XBot::SPDMatLogger _matlogger;
+
+        XBot::MatLogger::Ptr _matlogger;
 
         OpenSoT::solvers::QPOases_sot::Ptr _solver;
 
@@ -60,7 +63,7 @@ namespace demo {
         Eigen::VectorXd _dq;
         Eigen::VectorXd _q_ref, _q0;
         Eigen::VectorXd _q_home;
-        
+
         Eigen::VectorXd _k;
         Eigen::VectorXd _d;
 
@@ -69,7 +72,7 @@ namespace demo {
 
         Eigen::VectorXd _tau_max;
         Eigen::VectorXd _tau_min;
-        
+
         bool _homing_done;
 
         double _homing_time;
@@ -79,6 +82,6 @@ namespace demo {
         void QPPVMControl();
 
     };
-    
+
 }
 #endif

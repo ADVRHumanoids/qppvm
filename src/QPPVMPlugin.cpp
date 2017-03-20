@@ -22,23 +22,24 @@
 // #include <rtdk.h>
 // #define DPRINTF rt_printf
 
-SHLIBPP_DEFINE_SHARED_SUBCLASS(QPPVMPlugin_factory, demo::QPPVMPlugin, XBot::XBotControlPlugin);
+REGISTER_XBOT_PLUGIN(QPPVMPlugin, demo::QPPVMPlugin)
 
 using namespace demo;
 using namespace OpenSoT::constraints::torque;
 using namespace OpenSoT::tasks::torque;
 using namespace OpenSoT::solvers;
 
-QPPVMPlugin::QPPVMPlugin() : 
-    _matlogger("log", "/tmp/qppvm_logger.m")
+QPPVMPlugin::QPPVMPlugin()
 {
-    
+
 }
 
 bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                         XBot::SharedMemory::Ptr shared_memory,
                                         XBot::RobotInterface::Ptr robot)
 {
+    _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
+
     _robot = robot;
 
     _robot->model().getEffortLimits(_tau_max);
@@ -56,7 +57,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _q_ref = _q;
     _q_home = _q;
     _q0 = _q;
-    
+
     _q_home[0] = 0.0;
 
     _q_home[1] = 0.0;
@@ -81,7 +82,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     _k.setZero(_robot->getJointNum());
     _d.setZero(_robot->getJointNum());
-    
+
     Eigen::MatrixXd _k_matrix = 1000. * Eigen::MatrixXd::Identity(_robot->model().getJointNum(), _robot->model().getJointNum());
 
     _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
@@ -95,7 +96,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     stack_of_tasks.push_back(_joint_task);
 
     _solver.reset(new QPOases_sot(stack_of_tasks, _torque_limits, 2e12));
-    
+
     return true;
 }
 
@@ -115,11 +116,17 @@ void QPPVMPlugin::QPPVMControl()
     if(!_solver->solve(_tau_d)){
         _tau_d.setZero(_tau_d.size());
         //std::cout<<"SOLVER ERROR!"<<std::endl;
-        DPRINTF("SOLVER ERROR! \n");
+        printf("SOLVER ERROR! \n");
     }
 
     _tau_d = _tau_d + _h;
 }
+
+void QPPVMPlugin::on_start(double time)
+{
+    _start_time = time;
+}
+
 
 void QPPVMPlugin::control_loop(double time, double period)
 {
@@ -129,15 +136,15 @@ void QPPVMPlugin::control_loop(double time, double period)
 
     if(!_homing_done)
     {
-        if( (time - get_first_loop_time()) <= _homing_time ){
-            _q_ref = _q0 + 0.5*(1-std::cos(3.1415*(time - get_first_loop_time())/_homing_time))*(_q_home-_q0);
+        if( (time - _start_time) <= _homing_time ){
+            _q_ref = _q0 + 0.5*(1-std::cos(3.1415*(time - _start_time)/_homing_time))*(_q_home-_q0);
 
             _robot->model().setJointPosition(_q_ref);
             _robot->setReferenceFrom(_robot->model(), XBot::Sync::Position);
         }
         else{
             //std::cout<<"Homing Done! Starting QPPVM Control!"<<std::endl;
-            DPRINTF("Homing Done! Starting QPPVM Control! \n");
+            printf("Homing Done! Starting QPPVM Control! \n");
             _homing_done = true;}
     }
 
@@ -154,9 +161,9 @@ void QPPVMPlugin::control_loop(double time, double period)
 
         _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
     }
-    
-    _matlogger.add("tau_desired", _tau_d);
-    
+
+    _matlogger->add("tau_desired", _tau_d);
+
 //     _robot->printTracking();
 //    _robot->move();
 }
@@ -173,4 +180,4 @@ bool QPPVMPlugin::close()
 {
 
 }
- 
+

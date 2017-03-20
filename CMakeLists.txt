@@ -23,7 +23,7 @@ if ( ${ENABLE_XENO} )
    find_package(RTnet)
 endif()
 
-# C++11 
+# C++11
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 check_cxx_compiler_flag("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
@@ -35,9 +35,9 @@ else()
     message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
-# find packages 
+# find packages
 
-# include 
+# include
 include_directories(include
                     ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${idynutils_INCLUDE_DIRS}
                     ${iDynTree_INCLUDE_DIRS}
@@ -47,6 +47,7 @@ include_directories(include
 ## Build ##
 ###########
 add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
+add_library(OpenSotIkTestPlugin SHARED src/OpenSotIkTestPlugin.cpp include)
 
 if ( Xenomai_FOUND )
 #     set_xeno_flags(QPPVMPlugin)
@@ -56,11 +57,13 @@ endif()
 ## Link ##
 ##########
 target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
+target_link_libraries(OpenSotIkTestPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 
 #############
 ## Install ##
 #############
 
+# QPPVM PLUGIN ##################################################
 
 set(VARS_PREFIX "QPPVMPlugin")
 
@@ -101,6 +104,47 @@ install_basic_package_files(QPPVMPlugin VARS_PREFIX ${VARS_PREFIX}
                                     COMPATIBILITY SameMajorVersion
                                     TARGETS_PROPERTY ${VARS_PREFIX}_TARGETS
                                     NO_CHECK_REQUIRED_COMPONENTS_MACRO)
-                                    
-         
+
+# OPENSOTIK PLUGIN ##################################################
+
+
+set(VARS_PREFIX "OpenSotIkTestPlugin")
+
+set(OpenSotIkTestPlugin_MAJOR_VERSION 0)
+set(OpenSotIkTestPlugin_MINOR_VERSION 1)
+set(OpenSotIkTestPlugin_PATCH_VERSION 0)
+set(OpenSotIkTestPlugin_VERSION ${OpenSotIkTestPlugin_MAJOR_VERSION}.${OpenSotIkTestPlugin_MINOR_VERSION}.${OpenSotIkTestPlugin_PATCH_VERSION})
+
+find_package(YCM REQUIRED)
+include(YCMDefaultDirs)
+ycm_default_dirs(${VARS_PREFIX})
+
+target_include_directories(OpenSotIkTestPlugin PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
+                                                "$<INSTALL_INTERFACE:${${VARS_PREFIX}_INSTALL_INCLUDEDIR}>")
+
+set_target_properties(OpenSotIkTestPlugin PROPERTIES VERSION ${${VARS_PREFIX}_VERSION}
+                                               SOVERSION ${${VARS_PREFIX}_VERSION})
+
+install(DIRECTORY include/
+        DESTINATION "${${VARS_PREFIX}_INSTALL_INCLUDEDIR}"
+        FILES_MATCHING PATTERN "*.h*")
+
+install(TARGETS OpenSotIkTestPlugin
+        EXPORT OpenSotIkTestPlugin
+        ARCHIVE DESTINATION "${${VARS_PREFIX}_INSTALL_BINDIR}" COMPONENT lib
+        RUNTIME DESTINATION "${${VARS_PREFIX}_INSTALL_BINDIR}" COMPONENT bin
+        LIBRARY DESTINATION "${${VARS_PREFIX}_INSTALL_LIBDIR}" COMPONENT shlib)
+
+
+
+#enabling it will add all OpenSotIkTestPlugin dependencies as dependencies for third party users
+set_property(GLOBAL APPEND PROPERTY ${VARS_PREFIX}_TARGETS OpenSotIkTestPlugin)
+
+
+include(InstallBasicPackageFiles)
+install_basic_package_files(OpenSotIkTestPlugin VARS_PREFIX ${VARS_PREFIX}
+                                    VERSION ${${VARS_PREFIX}_VERSION}
+                                    COMPATIBILITY SameMajorVersion
+                                    TARGETS_PROPERTY ${VARS_PREFIX}_TARGETS
+                                    NO_CHECK_REQUIRED_COMPONENTS_MACRO)
 include(AddUninstallTarget)
