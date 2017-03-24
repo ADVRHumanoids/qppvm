@@ -16,8 +16,8 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
 
     _model->getRobotState("home", _qhome);
 
-    _left_ref = shared_memory->advertise<Eigen::Affine3d>("w_T_left_ee");
-    _right_ref = shared_memory->advertise<Eigen::Affine3d>("w_T_right_ee");
+    _left_ref = shared_memory->get<Eigen::Affine3d>("w_T_left_ee");
+    _right_ref = shared_memory->get<Eigen::Affine3d>("w_T_right_ee");
 
     _left_ref.reset(new Eigen::Affine3d);
     _right_ref.reset(new Eigen::Affine3d);
@@ -41,6 +41,10 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
 
     /* Create postural task */
     _postural.reset( new OpenSoT::tasks::velocity::Postural(_qhome) );
+    Eigen::VectorXd weight;
+    weight.setOnes((_model->getJointNum()));
+    weight(0) = 100;
+    _postural->setWeight(weight.asDiagonal());
 
     /* Create joint limits & velocity limits */
     Eigen::VectorXd qmin, qmax, qdotmax;
@@ -56,6 +60,8 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
     _autostack = ( (_right_ee + _left_ee) / _postural ) << _joint_lims << _joint_vel_lims;
 
     _solver.reset( new OpenSoT::solvers::QPOases_sot(_autostack->getStack(), _autostack->getBounds()) );
+    
+    
 
     return true;
 }
@@ -70,6 +76,7 @@ void OpenSotIkTestPlugin::on_start(double time)
     _model->getPose(_right_ee->getDistalLink(), *_right_ref);
 
     std::cout << "OpenSotIkTestPlugin STARTED!\nInitial q is " << _q.transpose() << std::endl;
+    std::cout << "Home q is " << _qhome.transpose() << std::endl;
 }
 
 void OpenSotIkTestPlugin::control_loop(double time, double period)
@@ -79,20 +86,29 @@ void OpenSotIkTestPlugin::control_loop(double time, double period)
     _model->update();
 
     /* Simple upward reference motion */
-    _right_ref->translation().z() += 0.05*period;
+//     _right_ref->translation().y() += 0.05*period;
 
     /* Set cartesian tasks reference */
     _left_ee->setReference(_left_ref->matrix());
     _right_ee->setReference(_right_ref->matrix());
 
     /* Log data */
-    Eigen::Vector3d left_pos, right_pos;
-    _model->getPointPosition(_left_ee->getDistalLink(), Eigen::Vector3d::Zero(), left_pos);
-    _model->getPointPosition(_right_ee->getDistalLink(), Eigen::Vector3d::Zero(), right_pos);
-    _logger->add("left_ref", _left_ref->translation());
-    _logger->add("right_ref", _right_ref->translation());
-    _logger->add("left_actual", left_pos);
-    _logger->add("right_actual", right_pos);
+    Eigen::Affine3d left_pose, right_pose;
+    _model->getPose(_left_ee->getDistalLink(), left_pose);
+    _model->getPose(_right_ee->getDistalLink(), right_pose);
+    
+    _logger->add("left_ref_pos", _left_ref->translation());
+    _logger->add("right_ref_pos", _right_ref->translation());
+    _logger->add("left_actual_pos", left_pose.translation());
+    _logger->add("right_actual_pos", right_pose.translation());
+    
+    _logger->add("left_ref_or", _left_ref->linear());
+    _logger->add("right_ref_or", _right_ref->linear());
+    _logger->add("left_actual_or", left_pose.linear());
+    _logger->add("right_actual_or", right_pose.linear());
+    _logger->add("computed_q", _q);
+    
+    _logger->add("time", time);
 
 
     /* Stack update and solve */
@@ -102,10 +118,14 @@ void OpenSotIkTestPlugin::control_loop(double time, double period)
 
     if( !_solver->solve(_dq) ){
         std::cerr << "UNABLE TO SOLVE" << std::endl;
+        return;
     }
+    
+    _logger->add("computed_qdot", _dq/period);
 
     /* Update q */
     _q += _dq;
+    
 
     /* Send command to motors */
     _robot->setReferenceFrom(*_model);
