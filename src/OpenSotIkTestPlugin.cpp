@@ -51,7 +51,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
     _model->getJointLimits(qmin, qmax);
     _model->getVelocityLimits(qdotmax);
     double qdotmax_min = qdotmax.minCoeff();
-    _final_qdot_lim = 1;
+    _final_qdot_lim = 2.0;
 
     _joint_lims.reset( new OpenSoT::constraints::velocity::JointLimits(_q0, qmax, qmin) );
 
@@ -62,7 +62,24 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
 
     _solver.reset( new OpenSoT::solvers::QPOases_sot(_autostack->getStack(), _autostack->getBounds()) );
     
+    // Logger
     
+    Eigen::Affine3d left_pose, right_pose;
+    _logger->add("left_ref_pos", _left_ref->translation());
+    _logger->add("right_ref_pos", _right_ref->translation());
+    _logger->add("left_actual_pos", left_pose.translation());
+    _logger->add("right_actual_pos", right_pose.translation());
+    
+    _logger->add("left_ref_or", _left_ref->linear());
+    _logger->add("right_ref_or", _right_ref->linear());
+    _logger->add("left_actual_or", left_pose.linear());
+    _logger->add("right_actual_or", right_pose.linear());
+    _logger->add("computed_q", _q0);
+    
+    _logger->add("computed_qdot", _q0);
+    
+    _logger->add("time", 0.0);
+
 
     return true;
 }
@@ -92,8 +109,6 @@ void OpenSotIkTestPlugin::control_loop(double time, double period)
     double alpha = 0;
     alpha = (time - _start_time)/10;
     alpha = alpha > 1 ? 1 : alpha;
-    
-    _logger->add("qdot_lim", (0 + alpha*(_final_qdot_lim - 0)));
     
     _joint_vel_lims->setVelocityLimits( (0 + alpha*(_final_qdot_lim - 0)) );
 
