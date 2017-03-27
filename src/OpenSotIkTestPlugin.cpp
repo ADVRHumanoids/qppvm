@@ -51,6 +51,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
     _model->getJointLimits(qmin, qmax);
     _model->getVelocityLimits(qdotmax);
     double qdotmax_min = qdotmax.minCoeff();
+    _final_qdot_lim = 1;
 
     _joint_lims.reset( new OpenSoT::constraints::velocity::JointLimits(_q0, qmax, qmin) );
 
@@ -74,6 +75,8 @@ void OpenSotIkTestPlugin::on_start(double time)
 
     _model->getPose(_left_ee->getDistalLink(), *_left_ref);
     _model->getPose(_right_ee->getDistalLink(), *_right_ref);
+    
+    _start_time = time;
 
     std::cout << "OpenSotIkTestPlugin STARTED!\nInitial q is " << _q.transpose() << std::endl;
     std::cout << "Home q is " << _qhome.transpose() << std::endl;
@@ -84,6 +87,15 @@ void OpenSotIkTestPlugin::control_loop(double time, double period)
     /* Model update */
     _model->setJointPosition(_q);
     _model->update();
+    
+    /* HACK: shape vel lim to avoid discontinuity */
+    double alpha = 0;
+    alpha = (time - _start_time)/10;
+    alpha = alpha > 1 ? 1 : alpha;
+    
+    _logger->add("qdot_lim", (0 + alpha*(_final_qdot_lim - 0)));
+    
+    _joint_vel_lims->setVelocityLimits( (0 + alpha*(_final_qdot_lim - 0)) );
 
     /* Simple upward reference motion */
 //     _right_ref->translation().y() += 0.05*period;
