@@ -21,6 +21,9 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
 
     _left_ref.reset(new Eigen::Affine3d);
     _right_ref.reset(new Eigen::Affine3d);
+    
+    std::vector<bool> active_joints(_model->getJointNum(), true);
+    active_joints[_model->getDofIndex(_model->chain("torso").getJointId(0))] = false;
 
     /* Create cartesian tasks for both hands */
     _left_ee.reset( new OpenSoT::tasks::velocity::Cartesian("CARTESIAN_LEFT",
@@ -29,6 +32,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
                                                             _model->chain("left_arm").getTipLinkName(),
                                                             "world"
                                                             ) );
+    _left_ee->setActiveJointsMask(active_joints);
 //     _left_ee->setLambda(100);
 
     _right_ee.reset( new OpenSoT::tasks::velocity::Cartesian("CARTESIAN_RIGHT",
@@ -37,6 +41,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
                                                              _model->chain("right_arm").getTipLinkName(),
                                                              "world"
                                                              ) );
+    _right_ee->setActiveJointsMask(active_joints);
 //     _right_ee->setLambda(100);
 
     /* Create postural task */
@@ -58,7 +63,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
     _joint_vel_lims.reset( new OpenSoT::constraints::velocity::VelocityLimits(qdotmax_min, 0.001, _model->getJointNum()) );
 
     /* Create autostack and set solver */
-    _autostack = ( (_right_ee + _left_ee) / _postural ) << _joint_lims << _joint_vel_lims;
+    _autostack = ( (/*_right_ee +*/ _left_ee) / _postural ) << _joint_lims << _joint_vel_lims;
 
     _solver.reset( new OpenSoT::solvers::QPOases_sot(_autostack->getStack(), _autostack->getBounds()) );
     
