@@ -58,7 +58,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
     double qdotmax_min = qdotmax.minCoeff();
     _final_qdot_lim = 2.0;
 
-    _joint_lims.reset( new OpenSoT::constraints::velocity::JointLimits(_q0, qmax, qmin) );
+    _joint_lims.reset( new OpenSoT::constraints::velocity::JointLimits(_qhome, qmax, qmin) );
 
     _joint_vel_lims.reset( new OpenSoT::constraints::velocity::VelocityLimits(qdotmax_min, 0.001, _model->getJointNum()) );
 
