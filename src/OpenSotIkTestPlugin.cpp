@@ -27,7 +27,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
 
     /* Create cartesian tasks for both hands */
     _left_ee.reset( new OpenSoT::tasks::velocity::Cartesian("CARTESIAN_LEFT",
-                                                            _q0,
+                                                            _qhome,
                                                             *_model,
                                                             _model->chain("left_arm").getTipLinkName(),
                                                             "world"
@@ -36,7 +36,7 @@ bool OpenSotIkTestPlugin::init_control_plugin(std::string path_to_config_file,
 //     _left_ee->setLambda(100);
 
     _right_ee.reset( new OpenSoT::tasks::velocity::Cartesian("CARTESIAN_RIGHT",
-                                                             _q0,
+                                                             _qhome,
                                                              *_model,
                                                              _model->chain("right_arm").getTipLinkName(),
                                                              "world"
@@ -94,6 +94,7 @@ void OpenSotIkTestPlugin::on_start(double time)
 
     _model->syncFrom(*_robot);
     _model->getJointPosition(_q);
+    
 
     _model->getPose(_left_ee->getDistalLink(), *_left_ref);
     _model->getPose(_right_ee->getDistalLink(), *_right_ref);
