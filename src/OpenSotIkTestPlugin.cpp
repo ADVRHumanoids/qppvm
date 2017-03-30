@@ -161,7 +161,7 @@ void OpenSotIkTestPlugin::control_loop(double time, double period)
     
 
     /* Send command to motors */
-    _robot->setReferenceFrom(*_model);
+    _robot->setReferenceFrom(*_model, XBot::Sync::Position);
     _robot->move();
 
 }
