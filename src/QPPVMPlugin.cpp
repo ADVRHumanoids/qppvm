@@ -83,19 +83,40 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _k.setZero(_robot->getJointNum());
     _d.setZero(_robot->getJointNum());
 
-    Eigen::MatrixXd _k_matrix = 1000. * Eigen::MatrixXd::Identity(_robot->model().getJointNum(), _robot->model().getJointNum());
+    Eigen::VectorXd k0, d0;
+    _robot->model().getStiffness(k0);
+    _robot->model().getDamping(d0);
+
+    Eigen::MatrixXd _k_matrix = k0.asDiagonal();
+    Eigen::MatrixXd _d_matrix = d0.asDiagonal();
 
     _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
     _joint_task.reset(new JointImpedanceCtrl(_q, _robot->model()));
     _joint_task->setStiffness(_k_matrix);
-    _joint_task->setDamping(_k_matrix*0.01);
+    _joint_task->setDamping(_d_matrix);
     _joint_task->useInertiaMatrix(false);
     _joint_task->update(_q);
 
-    QPOases_sot::Stack stack_of_tasks;
-    stack_of_tasks.push_back(_joint_task);
+    _robot->model().getJointLimits(_q_min, _q_max);
+    Eigen::VectorXd q_range = _q_max - _q_min;
+    _q_max -= q_range * 0.1;
+    _q_min += q_range * 0.1;
+    std::cout << "QMIN: " << _q_min.transpose() << std::endl;
+    std::cout << "QHOME: " << _q_home.transpose() << std::endl;
+    std::cout << "QMAX: " << _q_max.transpose() << std::endl;
 
-    _solver.reset(new QPOases_sot(stack_of_tasks, _torque_limits, 2e12));
+
+
+
+    _joint_limits.reset( new OpenSoT::constraints::torque::JointLimits(_q_home, _q_max, _q_min, _robot->model()) );
+    _joint_limits->setGains(k0*10, d0*20);
+    _joint_task->getConstraints().push_back(_joint_limits);
+//     _joint_task->getConstraints().push_back(_torque_limits);
+
+     QPOases_sot::Stack stack_of_tasks;
+     stack_of_tasks.push_back(_joint_task);
+
+    _solver.reset(new QPOases_sot(stack_of_tasks, 2e12));
 
     return true;
 }
@@ -106,6 +127,10 @@ void QPPVMPlugin::QPPVMControl()
     _tau_min = -_tau_max;
     _tau_max = _tau_max-_h;
     _tau_min = _tau_min-_h;
+
+
+    _q_ref = _q_home;
+    _q_ref(4) = _q_max(4) + 1;
 
     _joint_task->setReference(_q_ref);
     _torque_limits->setTorqueLimits(_tau_max, _tau_min);
@@ -144,7 +169,7 @@ void QPPVMPlugin::control_loop(double time, double period)
         }
         else{
             //std::cout<<"Homing Done! Starting QPPVM Control!"<<std::endl;
-            printf("Homing Done! Starting QPPVM Control! \n");
+            printf("Homing Done! Starting QPPVM Control!!! \n");
             _homing_done = true;}
     }
 
@@ -165,12 +190,12 @@ void QPPVMPlugin::control_loop(double time, double period)
     _matlogger->add("tau_desired", _tau_d);
 
 //     _robot->printTracking();
-//    _robot->move();
+   _robot->move();
 }
 
 void QPPVMPlugin::sense()
 {
-    _robot->sense();
+//     _robot->sense();
     _robot->model().getJointPosition(_q);
     _robot->model().getJointVelocity(_dq);
 }

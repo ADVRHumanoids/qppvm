@@ -25,6 +25,8 @@
 #include <OpenSoT/tasks/torque/CartesianImpedanceCtrl.h>
 #include <OpenSoT/tasks/torque/JointImpedanceCtrl.h>
 #include <OpenSoT/constraints/torque/TorqueLimits.h>
+#include <OpenSoT/constraints/torque/JointLimits.h>
+#include <OpenSoT/utils/AutoStack.h>
 
 
 #include <XBotInterface/Logger.hpp>
@@ -58,6 +60,10 @@ namespace demo {
 
         OpenSoT::constraints::torque::TorqueLimits::Ptr _torque_limits;
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
+        OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
+
+        OpenSoT::AutoStack::Ptr _autostack;
+
 
         Eigen::VectorXd _q;
         Eigen::VectorXd _dq;
@@ -72,6 +78,9 @@ namespace demo {
 
         Eigen::VectorXd _tau_max;
         Eigen::VectorXd _tau_min;
+
+        Eigen::VectorXd _q_max;
+        Eigen::VectorXd _q_min;
 
         bool _homing_done;
 
