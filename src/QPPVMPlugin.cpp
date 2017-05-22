@@ -119,6 +119,7 @@ void QPPVMPlugin::QPPVMControl()
         printf("SOLVER ERROR! \n");
     }
 
+    _tau_d.setZero(_tau_d.size());
     _tau_d = _tau_d + _h;
 }
 
@@ -131,8 +132,8 @@ void QPPVMPlugin::on_start(double time)
 void QPPVMPlugin::control_loop(double time, double period)
 {
     sense();
-    //_robot->model().computeNonlinearTerm(_h);
-    _h.setZero(_h.size());
+    _robot->model().computeGravityCompensation(_h);
+//     _h.setZero(_h.size());
 
     if(!_homing_done)
     {
@@ -154,8 +155,8 @@ void QPPVMPlugin::control_loop(double time, double period)
     {
 
 
-        _robot->setStiffness(_k);
-        _robot->setDamping(_d);
+//         _robot->setStiffness(_k);
+//         _robot->setDamping(_d);
         // set the joint effort on the model and then synchronize the effort on the robot
         _robot->model().setJointEffort(_tau_d);
 
