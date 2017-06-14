@@ -51,8 +51,12 @@ namespace demo {
     private:
 
         double _start_time;
+        
+        void syncFromMotorSide(XBot::RobotInterface::Ptr robot, XBot::ModelInterface::Ptr model);
+        XBot::JointIdMap _jidmap;
 
         XBot::RobotInterface::Ptr _robot;
+        XBot::ModelInterface::Ptr _model;
 
         XBot::MatLogger::Ptr _matlogger;
 
