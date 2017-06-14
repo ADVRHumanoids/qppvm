@@ -164,7 +164,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
   //    stack_of_tasks.push_back(_joint_task);
      
 
-    _solver.reset(new QPOases_sot(_autostack->getStack(), _autostack->getBounds() ) );
+    _solver.reset(new QPOases_sot(_autostack->getStack(), _autostack->getBounds(), 1.0 ) );
 
     return true;
 }
@@ -280,7 +280,7 @@ void demo::QPPVMPlugin::syncFromMotorSide(XBot::RobotInterface::Ptr robot, XBot:
     model->setJointPosition(_jidmap);
     
     robot->getMotorPosition(_jidmap);
-    model->setMotorVelocity(_jidmap);
+    model->setJointVelocity(_jidmap);
     
     model->update();
 }
