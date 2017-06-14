@@ -42,15 +42,16 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     _robot = robot;
     _model = XBot::ModelInterface::getModel(path_to_config_file);
+    _model->syncFrom(*_robot);
 
-    _robot->model().getEffortLimits(_tau_max);
+    _model->getEffortLimits(_tau_max);
     _tau_min = -_tau_max;
 
-    _tau_d.resize(_robot->model().getJointNum());
+    _tau_d.resize(_model->getJointNum());
     _tau_d.setZero(_tau_d.size());
 
     sense();
-    //_robot->model().computeNonlinearTerm(_h);
+    //_model->computeNonlinearTerm(_h);
     _h.setZero(_tau_d.size());
     _tau_max = _tau_max-_h;
     _tau_min = _tau_min-_h;
@@ -85,8 +86,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _d.setZero(_robot->getJointNum());
 
     Eigen::VectorXd k0, d0;
-    _robot->model().getStiffness(k0);
-    _robot->model().getDamping(d0);
+    _model->getStiffness(k0);
+    _model->getDamping(d0);
 
     Eigen::MatrixXd _k_matrix = k0.asDiagonal();
     Eigen::MatrixXd _d_matrix = d0.asDiagonal();
@@ -99,7 +100,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _joint_task->setDamping(.01*_d_matrix);
     _joint_task->useInertiaMatrix(true);
     _joint_task->update(_q);
-    _robot->model().getJointLimits(_q_min, _q_max);
+    _model->getJointLimits(_q_min, _q_max);
     Eigen::VectorXd q_range = _q_max - _q_min;
     _q_max -= q_range * 0.1;
     _q_min += q_range * 0.1;
@@ -171,7 +172,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
 void QPPVMPlugin::QPPVMControl()
 {
-    _robot->model().getEffortLimits(_tau_max);
+    _model->getEffortLimits(_tau_max);
     _tau_min = -_tau_max;
     _tau_max = _tau_max-_h;
     _tau_min = _tau_min-_h;
@@ -208,7 +209,7 @@ void QPPVMPlugin::on_start(double time)
 {
     sense();
     
-    _robot->model().getJointPosition(_q);
+    _model->getJointPosition(_q);
     
 
     
@@ -218,10 +219,10 @@ void QPPVMPlugin::on_start(double time)
     _robot->move();
 
     Eigen::Affine3d left_ee_pose;
-    _robot->model().getPose(_ee_task_left->getDistalLink(), left_ee_pose);
+    _model->getPose(_ee_task_left->getDistalLink(), left_ee_pose);
     
     Eigen::Affine3d right_ee_pose;
-    _robot->model().getPose(_ee_task_right->getDistalLink(), right_ee_pose);
+    _model->getPose(_ee_task_right->getDistalLink(), right_ee_pose);
     
     _ee_task_left->setReference(left_ee_pose.matrix());
     _ee_task_right->setReference(right_ee_pose.matrix());
@@ -245,16 +246,16 @@ void QPPVMPlugin::control_loop(double time, double period)
 {
     
     sense();
-    _robot->model().computeNonlinearTerm(_h);
+    _model->computeNonlinearTerm(_h);
 //     _h.setZero(_h.size());
 
 
     QPPVMControl();
     
     // set the joint effort on the model and then synchronize the effort on the robot
-    _robot->model().setJointEffort(_tau_d);
+    _model->setJointEffort(_tau_d);
 
-    _robot->setReferenceFrom(_robot->model(), XBot::Sync::Effort);
+    _robot->setReferenceFrom(*_model, XBot::Sync::Effort);
 
     _matlogger->add("tau_desired", _tau_d);
 
@@ -279,7 +280,7 @@ void demo::QPPVMPlugin::syncFromMotorSide(XBot::RobotInterface::Ptr robot, XBot:
     robot->getMotorPosition(_jidmap);
     model->setJointPosition(_jidmap);
     
-    robot->getMotorPosition(_jidmap);
+    robot->getMotorVelocity(_jidmap);
     model->setJointVelocity(_jidmap);
     
     model->update();
