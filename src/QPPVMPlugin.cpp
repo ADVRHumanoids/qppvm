@@ -94,7 +94,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     std::cout<<"_d_matrix: "<<_d_matrix<<std::endl;
 
     _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
-    _joint_task.reset(new JointImpedanceCtrl(_q_home, _robot->model()));
+    _joint_task.reset(new JointImpedanceCtrl(_q_home, *_model));
     _joint_task->setStiffness(0.*_k_matrix);
     _joint_task->setDamping(.01*_d_matrix);
     _joint_task->useInertiaMatrix(true);
