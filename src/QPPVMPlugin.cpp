@@ -43,6 +43,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _robot = robot;
     _model = XBot::ModelInterface::getModel(path_to_config_file);
     _model->syncFrom(*_robot);
+    
+    _model->initLog(_matlogger, 30000);
 
     _model->getEffortLimits(_tau_max);
     _tau_min = -_tau_max;
@@ -98,7 +100,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _joint_task.reset(new JointImpedanceCtrl(_q_home, *_model));
     _joint_task->setStiffness(0.*_k_matrix);
     _joint_task->setDamping(.01*_d_matrix);
-    _joint_task->useInertiaMatrix(true);
+    _joint_task->useInertiaMatrix(false);
     _joint_task->update(_q);
     _model->getJointLimits(_q_min, _q_max);
     Eigen::VectorXd q_range = _q_max - _q_min;
@@ -119,7 +121,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     W = W*1;
     _ee_task_left->setStiffnessDamping(W, Eigen::VectorXd::Constant(6,.3).asDiagonal());
     _ee_task_left->update(_q_home);
-    _ee_task_left->useInertiaMatrix(true);
+    _ee_task_left->useInertiaMatrix(false);
     
     _ee_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ARM", 
                                                                        _q_home, 
@@ -129,7 +131,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        ) );
     _ee_task_right->setStiffnessDamping(W, Eigen::VectorXd::Constant(6,.3).asDiagonal());;
     
-    _ee_task_right->useInertiaMatrix(true);
+    _ee_task_right->useInertiaMatrix(false);
     
     _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW", 
                                                                           _q, 
@@ -172,6 +174,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
 void QPPVMPlugin::QPPVMControl()
 {
+    
+    
     _model->getEffortLimits(_tau_max);
     _tau_min = -_tau_max;
     _tau_max = _tau_max-_h;
@@ -186,7 +190,9 @@ void QPPVMPlugin::QPPVMControl()
      //_torque_limits->update(_q);
      //_joint_task->update(_q);
      //_ee_task_left->update(_q);
-    _autostack->update(_q);
+     _autostack->update(_q);
+    
+    
      
 //      std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;
      _matlogger->add("left_error", _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce());
@@ -258,8 +264,13 @@ void QPPVMPlugin::control_loop(double time, double period)
     _robot->setReferenceFrom(*_model, XBot::Sync::Effort);
 
     _matlogger->add("tau_desired", _tau_d);
+    _matlogger->add("time_matlogger", time);
 
-   _robot->move();
+    
+    _model->log(_matlogger, time);
+    
+
+    _robot->move();
 }
 
 void QPPVMPlugin::sense()
