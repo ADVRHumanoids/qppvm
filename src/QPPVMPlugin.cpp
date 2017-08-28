@@ -76,6 +76,22 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->getStiffness(k0);
     _model->getDamping(d0);
 
+
+    _k[_model->getDofIndex("j_arm2_5")] = k0[_model->getDofIndex("j_arm2_5")];
+    _k[_model->getDofIndex("j_arm2_6")] = k0[_model->getDofIndex("j_arm2_6")];
+    _k[_model->getDofIndex("j_arm2_7")] = k0[_model->getDofIndex("j_arm2_7")];
+    _k[_model->getDofIndex("j_arm1_5")] = k0[_model->getDofIndex("j_arm1_5")];
+    _k[_model->getDofIndex("j_arm1_6")] = k0[_model->getDofIndex("j_arm1_6")];
+    _k[_model->getDofIndex("j_arm1_7")] = k0[_model->getDofIndex("j_arm1_7")];
+
+    _d[_model->getDofIndex("j_arm2_5")] = d0[_model->getDofIndex("j_arm2_5")];
+    _d[_model->getDofIndex("j_arm2_6")] = d0[_model->getDofIndex("j_arm2_6")];
+    _d[_model->getDofIndex("j_arm2_7")] = d0[_model->getDofIndex("j_arm2_7")];
+    _d[_model->getDofIndex("j_arm1_5")] = d0[_model->getDofIndex("j_arm1_5")];
+    _d[_model->getDofIndex("j_arm1_6")] = d0[_model->getDofIndex("j_arm1_6")];
+    _d[_model->getDofIndex("j_arm1_7")] = d0[_model->getDofIndex("j_arm1_7")];
+
+
     Eigen::MatrixXd _k_matrix = k0.asDiagonal();
     Eigen::MatrixXd _d_matrix = d0.asDiagonal();
 
