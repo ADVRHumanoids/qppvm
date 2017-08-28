@@ -18,6 +18,7 @@
 */
 
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
+#include <qpOASES.hpp>
 
 // #include <rtdk.h>
 // #define DPRINTF rt_printf
@@ -54,20 +55,13 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _tau_d.setZero(_tau_d.size());
 
     sense();
-    //_model->computeNonlinearTerm(_h);
-    _h.setZero(_tau_d.size());
+    _model->computeNonlinearTerm(_h);
     _tau_max = _tau_max_const-_h;
     _tau_min = _tau_min_const-_h;
 
-    _q_ref = _q;
-    _q_home = _q;
-    _q0 = _q;
-
     _model->getRobotState("home", _q_home);
-
-    _homing_done = false;
-
-    _homing_time = 4.;
+    _q = _q_home;
+    _q_ref = _q;
 
     _k.setZero(_robot->getJointNum());
     _d.setZero(_robot->getJointNum());
@@ -77,25 +71,25 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->getDamping(d0);
 
 
-    _k[_model->getDofIndex("j_arm2_5")] = k0[_model->getDofIndex("j_arm2_5")];
-    _k[_model->getDofIndex("j_arm2_6")] = k0[_model->getDofIndex("j_arm2_6")];
-    _k[_model->getDofIndex("j_arm2_7")] = k0[_model->getDofIndex("j_arm2_7")];
-    _k[_model->getDofIndex("j_arm1_5")] = k0[_model->getDofIndex("j_arm1_5")];
-    _k[_model->getDofIndex("j_arm1_6")] = k0[_model->getDofIndex("j_arm1_6")];
-    _k[_model->getDofIndex("j_arm1_7")] = k0[_model->getDofIndex("j_arm1_7")];
-
-    _d[_model->getDofIndex("j_arm2_5")] = d0[_model->getDofIndex("j_arm2_5")];
-    _d[_model->getDofIndex("j_arm2_6")] = d0[_model->getDofIndex("j_arm2_6")];
-    _d[_model->getDofIndex("j_arm2_7")] = d0[_model->getDofIndex("j_arm2_7")];
-    _d[_model->getDofIndex("j_arm1_5")] = d0[_model->getDofIndex("j_arm1_5")];
-    _d[_model->getDofIndex("j_arm1_6")] = d0[_model->getDofIndex("j_arm1_6")];
-    _d[_model->getDofIndex("j_arm1_7")] = d0[_model->getDofIndex("j_arm1_7")];
+//     _k[_model->getDofIndex("j_arm2_5")] = k0[_model->getDofIndex("j_arm2_5")];
+//     _k[_model->getDofIndex("j_arm2_6")] = k0[_model->getDofIndex("j_arm2_6")];
+//     _k[_model->getDofIndex("j_arm2_7")] = k0[_model->getDofIndex("j_arm2_7")];
+//     _k[_model->getDofIndex("j_arm1_5")] = k0[_model->getDofIndex("j_arm1_5")];
+//     _k[_model->getDofIndex("j_arm1_6")] = k0[_model->getDofIndex("j_arm1_6")];
+//     _k[_model->getDofIndex("j_arm1_7")] = k0[_model->getDofIndex("j_arm1_7")];
+// 
+//     _d[_model->getDofIndex("j_arm2_5")] = d0[_model->getDofIndex("j_arm2_5")];
+//     _d[_model->getDofIndex("j_arm2_6")] = d0[_model->getDofIndex("j_arm2_6")];
+//     _d[_model->getDofIndex("j_arm2_7")] = d0[_model->getDofIndex("j_arm2_7")];
+//     _d[_model->getDofIndex("j_arm1_5")] = d0[_model->getDofIndex("j_arm1_5")];
+//     _d[_model->getDofIndex("j_arm1_6")] = d0[_model->getDofIndex("j_arm1_6")];
+//     _d[_model->getDofIndex("j_arm1_7")] = d0[_model->getDofIndex("j_arm1_7")];
 
 
     Eigen::MatrixXd _k_matrix = k0.asDiagonal();
     Eigen::MatrixXd _d_matrix = d0.asDiagonal();
 
-    _k_matrix *= 0.0;
+    _k_matrix *= 1.0;
     _d_matrix *= 0.01;
     
     std::cout<<"_d_matrix: "<<_d_matrix<<std::endl;
@@ -117,8 +111,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     active_joint_mask[_model->getDofIndex("j_arm2_2")] = true;
     active_joint_mask[_model->getDofIndex("j_arm2_3")] = true;
     active_joint_mask[_model->getDofIndex("j_arm2_4")] = true;
-    _joint_task->setActiveJointsMask(active_joint_mask);
-    _joint_task->useInertiaMatrix(false);
+   // _joint_task->setActiveJointsMask(active_joint_mask);
+    _joint_task->useInertiaMatrix(true);
     _joint_task->update(_q);
 
 //    _model->getJointLimits(_q_min, _q_max);
@@ -131,13 +125,13 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
 
     _ee_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ARM", 
-                                                                       _q_home, 
+                                                                       _q, 
                                                                        *_model, 
                                                                        _robot->chain("left_arm").getTipLinkName(),
                                                                        "world"
                                                                        ) );
-    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 1000*Kc; Kc(3,3) = 0; Kc(4,4) = 0; Kc(5,5) = 0;
-    Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 0.3*Dc; Dc(3,3) = 0; Dc(4,4) = 0; Dc(5,5) = 0;
+    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 1000*Kc; //Kc(3,3) = 0; Kc(4,4) = 0; Kc(5,5) = 0;
+    Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 0.3*Dc; //Dc(3,3) = 0; Dc(4,4) = 0; Dc(5,5) = 0;
     _ee_task_left->setStiffnessDamping(Kc, Dc);
     for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
         active_joint_mask[i] = false;
@@ -146,12 +140,12 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     active_joint_mask[_model->getDofIndex("j_arm1_2")] = true;
     active_joint_mask[_model->getDofIndex("j_arm1_3")] = true;
     active_joint_mask[_model->getDofIndex("j_arm1_4")] = true;
-    _ee_task_left->setActiveJointsMask(active_joint_mask);
-    _ee_task_left->useInertiaMatrix(false);
-    _ee_task_left->update(_q_home);
+    //_ee_task_left->setActiveJointsMask(active_joint_mask);
+    _ee_task_left->useInertiaMatrix(true);
+    _ee_task_left->update(_q);
     
     _ee_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ARM", 
-                                                                       _q_home, 
+                                                                       _q, 
                                                                        *_model, 
                                                                        _robot->chain("right_arm").getTipLinkName(),
                                                                        "world"
@@ -164,9 +158,9 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     active_joint_mask[_model->getDofIndex("j_arm2_2")] = true;
     active_joint_mask[_model->getDofIndex("j_arm2_3")] = true;
     active_joint_mask[_model->getDofIndex("j_arm2_4")] = true;
-    _ee_task_right->setActiveJointsMask(active_joint_mask);
-    _ee_task_right->useInertiaMatrix(false);
-    _ee_task_right->update(_q_home);
+   // _ee_task_right->setActiveJointsMask(active_joint_mask);
+    _ee_task_right->useInertiaMatrix(true);
+    _ee_task_right->update(_q);
     
 //    _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW",
 //                                                                          _q_home,
@@ -196,12 +190,19 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                     / _joint_task ) << _torque_limits;
     
     
-  //    QPOases_sot::Stack stack_of_tasks;
-  //    stack_of_tasks.push_back(_ee_task_left);
-  //    stack_of_tasks.push_back(_joint_task);
+//      QPOases_sot::Stack stack_of_tasks;
+//      stack_of_tasks.push_back(_ee_task_left);
+//      stack_of_tasks.push_back(_joint_task);
      
 
     _solver.reset(new QPOases_sot(_autostack->getStack(), _autostack->getBounds(), 1.0 ) );
+    
+//     qpOASES::Options opt;
+//     opt.setToReliable();
+//     opt.printLevel = qpOASES::PL_LOW;
+//     
+//     _solver->setOptions(0, opt);
+//     _solver->setOptions(1, opt);
 
     return true;
 }
@@ -278,7 +279,6 @@ void QPPVMPlugin::control_loop(double time, double period)
     
     sense();
     _model->computeNonlinearTerm(_h);
-//     _h.setZero(_h.size());
 
 
     QPPVMControl();
@@ -300,7 +300,8 @@ void QPPVMPlugin::control_loop(double time, double period)
 
 void QPPVMPlugin::sense()
 {
-    syncFromMotorSide(_robot, _model);
+   // syncFromMotorSide(_robot, _model);
+    _model->syncFrom(*_robot);
     _model->getJointPosition(_q);
     _model->getJointVelocity(_dq);
 }
