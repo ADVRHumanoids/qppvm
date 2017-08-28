@@ -84,6 +84,8 @@ namespace demo {
 
         Eigen::VectorXd _tau_max;
         Eigen::VectorXd _tau_min;
+        Eigen::VectorXd _tau_max_const;
+        Eigen::VectorXd _tau_min_const;
 
         Eigen::VectorXd _q_max;
         Eigen::VectorXd _q_min;

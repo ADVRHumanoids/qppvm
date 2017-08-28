@@ -46,8 +46,9 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     
     _model->initLog(_matlogger, 30000);
 
-    _model->getEffortLimits(_tau_max);
-    _tau_min = -_tau_max;
+    _model->getEffortLimits(_tau_max_const);
+    _tau_min_const = -_tau_max_const;
+    std::cout<<"tau_max_const: "<<_tau_max_const<<std::endl;
 
     _tau_d.resize(_model->getJointNum());
     _tau_d.setZero(_tau_d.size());
@@ -55,30 +56,14 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     sense();
     //_model->computeNonlinearTerm(_h);
     _h.setZero(_tau_d.size());
-    _tau_max = _tau_max-_h;
-    _tau_min = _tau_min-_h;
+    _tau_max = _tau_max_const-_h;
+    _tau_min = _tau_min_const-_h;
 
     _q_ref = _q;
     _q_home = _q;
     _q0 = _q;
 
-    _q_home[0] = 0.0;
-
-    _q_home[1] = 0.0;
-    _q_home[2] = -0.3;
-    _q_home[3] = -0.8;
-    _q_home[4] = -0.8;
-    _q_home[5] = 0.0;
-    _q_home[6] = -0.8;
-    _q_home[7] = 0.0;
-
-    _q_home[8] = 0.0;
-    _q_home[9] = 0.3;
-    _q_home[10] = 0.8;
-    _q_home[11] = 0.8;
-    _q_home[12] = 0.0;
-    _q_home[13] = 0.8;
-    _q_home[14] = 0.0;
+    _model->getRobotState("home", _q_home);
 
     _homing_done = false;
 
@@ -93,22 +78,27 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
     Eigen::MatrixXd _k_matrix = k0.asDiagonal();
     Eigen::MatrixXd _d_matrix = d0.asDiagonal();
+
+    _k_matrix *= 0.0;
+    _d_matrix *= 0.01;
     
     std::cout<<"_d_matrix: "<<_d_matrix<<std::endl;
+    std::cout<<"_k_matrix: "<<_k_matrix<<std::endl;
 
     _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
     _joint_task.reset(new JointImpedanceCtrl(_q_home, *_model));
-    _joint_task->setStiffness(0.*_k_matrix);
-    _joint_task->setDamping(.01*_d_matrix);
+    _joint_task->setStiffness(_k_matrix);
+    _joint_task->setDamping(_d_matrix);
     _joint_task->useInertiaMatrix(false);
     _joint_task->update(_q);
-    _model->getJointLimits(_q_min, _q_max);
-    Eigen::VectorXd q_range = _q_max - _q_min;
-    _q_max -= q_range * 0.1;
-    _q_min += q_range * 0.1;
-    std::cout << "QMIN: " << _q_min.transpose() << std::endl;
-    std::cout << "QHOME: " << _q_home.transpose() << std::endl;
-    std::cout << "QMAX: " << _q_max.transpose() << std::endl;
+
+//    _model->getJointLimits(_q_min, _q_max);
+//    Eigen::VectorXd q_range = _q_max - _q_min;
+//    _q_max -= q_range * 0.1;
+//    _q_min += q_range * 0.1;
+//    std::cout << "QMIN: " << _q_min.transpose() << std::endl;
+//    std::cout << "QHOME: " << _q_home.transpose() << std::endl;
+//    std::cout << "QMAX: " << _q_max.transpose() << std::endl;
 
 
     _ee_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ARM", 
@@ -133,27 +123,26 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     
     _ee_task_right->useInertiaMatrix(false);
     
-    _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW", 
-                                                                          _q, 
-                                                                           *_model, 
-                                                                           _robot->chain("left_arm").getUrdfLinks()[4]->name,
-                                                                          "world"
-                                                                         ) );
+//    _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW",
+//                                                                          _q_home,
+//                                                                           *_model,
+//                                                                           _robot->chain("left_arm").getUrdfLinks()[4]->name,
+//                                                                          "world"
+//                                                                         ) );
     
-    _elbow_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ELBOW", 
-                                                                          _q, 
-                                                                           *_model, 
-                                                                           _robot->chain("right_arm").getUrdfLinks()[4]->name,
-                                                                          "world"
-                                                                         ) );
+//    _elbow_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ELBOW",
+//                                                                          _q_home,
+//                                                                           *_model,
+//                                                                           _robot->chain("right_arm").getUrdfLinks()[4]->name,
+//                                                                          "world"
+//                                                                         ) );
     
 
-    _joint_limits.reset( new OpenSoT::constraints::torque::JointLimits(_q_home, _q_max, _q_min, *_model) );
-    _joint_limits->setGains(k0*10, d0*20);
-    _joint_limits->update(_q_home);
+//    _joint_limits.reset( new OpenSoT::constraints::torque::JointLimits(_q_home, _q_max, _q_min, *_model) );
+//    _joint_limits->setGains(k0*10, d0*20);
+//    _joint_limits->update(_q_home);
 
 //     _joint_task->getConstraints().push_back(_torque_limits);
-//     _joint_task->setStiffnessDamping(k0.asDiagonal(), d0.asDiagonal());
 //     _joint_task->useInertiaMatrix(false);
      
 
@@ -174,18 +163,14 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 
 void QPPVMPlugin::QPPVMControl()
 {
-    
-    
-    _model->getEffortLimits(_tau_max);
-    _tau_min = -_tau_max;
-    _tau_max = _tau_max-_h;
-    _tau_min = _tau_min-_h;
-
-
-    _q_ref = _q_home;
-
-    _joint_task->setReference(_q_ref);
+    _tau_max = _tau_max_const-_h;
+    _tau_min = _tau_min_const-_h;
     _torque_limits->setTorqueLimits(_tau_max, _tau_min);
+
+
+//    _q_ref = _q_home;
+//    _joint_task->setReference(_q_ref);
+
 
      //_torque_limits->update(_q);
      //_joint_task->update(_q);
@@ -201,7 +186,6 @@ void QPPVMPlugin::QPPVMControl()
     if(!_solver->solve(_tau_d)){
         _tau_d.setZero(_tau_d.size());
         std::cout<<"SOLVER ERROR!"<<std::endl;
-        //printf("SOLVER ERROR! \n");
     }
     
     _matlogger->add("left_task_error", _ee_task_left->getA()*_tau_d - _ee_task_left->getb());
@@ -214,10 +198,6 @@ void QPPVMPlugin::QPPVMControl()
 void QPPVMPlugin::on_start(double time)
 {
     sense();
-    
-    _model->getJointPosition(_q);
-    
-
     
     _start_time = time;
     _robot->setStiffness(_k);
