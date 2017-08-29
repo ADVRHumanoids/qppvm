@@ -89,8 +89,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     Eigen::MatrixXd _k_matrix = k0.asDiagonal();
     Eigen::MatrixXd _d_matrix = d0.asDiagonal();
 
-    _k_matrix *= 1.0;
-    _d_matrix *= 0.01;
+    _k_matrix *= Eigen::VectorXd(_k_matrix.size()).setConstant(100.0).asDiagonal();
+    _d_matrix *= Eigen::VectorXd(_k_matrix.size()).setConstant(1.0).asDiagonal();
     
     std::cout<<"_d_matrix: "<<_d_matrix<<std::endl;
     std::cout<<"_k_matrix: "<<_k_matrix<<std::endl;
