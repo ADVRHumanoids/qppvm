@@ -44,7 +44,9 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _set_ref = true;
 
     _robot = robot;
-    _model = XBot::ModelInterface::getModel(path_to_config_file);
+    //_model = XBot::ModelInterface::getModel(path_to_config_file);
+    _model = XBot::ModelInterface::getModel(
+        "/home/centauro/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
     _model->syncFrom(*_robot);
     
     _model->initLog(_matlogger, 30000);
@@ -69,13 +71,30 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _d.setZero(_robot->getJointNum());
 
     Eigen::VectorXd k0, d0;
-    _model->getStiffness(k0);
-    _model->getDamping(d0);
+    _robot->getStiffness(k0);
+    _robot->getDamping(d0);
+    
+    _k[_robot->getDofIndex("j_arm1_5")] = k0[_robot->getDofIndex("j_arm1_5")];
+    _k[_robot->getDofIndex("j_arm1_6")] = k0[_robot->getDofIndex("j_arm1_6")];
+    _k[_robot->getDofIndex("j_arm1_7")] = k0[_robot->getDofIndex("j_arm1_7")];
+    _k[_robot->getDofIndex("j_arm2_5")] = k0[_robot->getDofIndex("j_arm2_5")];
+    _k[_robot->getDofIndex("j_arm2_6")] = k0[_robot->getDofIndex("j_arm2_6")];
+    _k[_robot->getDofIndex("j_arm2_7")] = k0[_robot->getDofIndex("j_arm2_7")];
+    
+    _d[_robot->getDofIndex("j_arm1_5")] = d0[_robot->getDofIndex("j_arm1_5")];
+    _d[_robot->getDofIndex("j_arm1_6")] = d0[_robot->getDofIndex("j_arm1_6")];
+    _d[_robot->getDofIndex("j_arm1_7")] = d0[_robot->getDofIndex("j_arm1_7")];
+    _d[_robot->getDofIndex("j_arm2_5")] = d0[_robot->getDofIndex("j_arm2_5")];
+    _d[_robot->getDofIndex("j_arm2_6")] = d0[_robot->getDofIndex("j_arm2_6")];
+    _d[_robot->getDofIndex("j_arm2_7")] = d0[_robot->getDofIndex("j_arm2_7")];
 
 
-    Eigen::VectorXd _k_matrix = k0;
-    Eigen::VectorXd _d_matrix = d0;
-
+    Eigen::VectorXd _k_matrix;
+    Eigen::VectorXd _d_matrix;
+    _model->getStiffness(_k_matrix);
+    _model->getDamping(_d_matrix);
+    
+    
     _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(100.0);
     _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(0.1);
 
