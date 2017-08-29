@@ -27,6 +27,8 @@
 #include <OpenSoT/constraints/torque/TorqueLimits.h>
 #include <OpenSoT/constraints/torque/JointLimits.h>
 #include <OpenSoT/utils/AutoStack.h>
+#include <OpenSoT/SubTask.h>
+#include <trajectory_utils/trajectory_utils.h>
 
 
 #include <XBotInterface/Logger.hpp>
@@ -45,12 +47,16 @@ namespace demo {
         virtual void on_start(double time);
         virtual void control_loop(double time, double period);
         virtual bool close();
+        
+        boost::shared_ptr<trajectory_utils::trajectory_generator> left_trj;
 
     protected:
 
     private:
 
         double _start_time;
+        
+        bool _set_ref;
         
         void syncFromMotorSide(XBot::RobotInterface::Ptr robot, XBot::ModelInterface::Ptr model);
         XBot::JointIdMap _jidmap;
@@ -65,6 +71,7 @@ namespace demo {
         OpenSoT::constraints::torque::TorqueLimits::Ptr _torque_limits;
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
         OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _ee_task_right, _ee_task_left;
+        OpenSoT::SubTask::Ptr _ee_task_left_pos, _ee_task_right_pos; 
         OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _elbow_task_right, _elbow_task_left;
         OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
 
@@ -96,7 +103,7 @@ namespace demo {
 
         void sense();
 
-        void QPPVMControl();
+        void QPPVMControl(const double time);
 
     };
 

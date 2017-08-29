@@ -20,6 +20,9 @@
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
 #include <qpOASES.hpp>
 
+#define TRJ_TIME 3.0
+
+
 // #include <rtdk.h>
 // #define DPRINTF rt_printf
 
@@ -29,6 +32,29 @@ using namespace demo;
 using namespace OpenSoT::constraints::torque;
 using namespace OpenSoT::tasks::torque;
 using namespace OpenSoT::solvers;
+
+void toKDLFrame(const Eigen::MatrixXd& T, KDL::Frame& F)
+{
+    F.p.x(T(0,3)); 
+    F.p.y(T(1,3)); 
+    F.p.z(T(2,3));
+    for(unsigned int i = 0; i < 3; ++i)
+    {
+        for(unsigned int j = 0; j < 3; ++j)
+            F.M(i,j) = T(i,j);
+    }
+}
+
+void toEigenMatrix(const KDL::Frame& F, Eigen::MatrixXd& T)
+{
+    T.setIdentity(4,4);
+    T(0,3) = F.p.x(); T(1,3) = F.p.y(); T(2,3) = F.p.z();
+    for(unsigned int i = 0; i < 3; ++i)
+    {
+        for(unsigned int j = 0; j < 3; ++j)
+            T(i,j) = F.M(i,j);
+    }
+}
 
 QPPVMPlugin::QPPVMPlugin()
 {
@@ -41,7 +67,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 {
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
     
-    _set_ref = true;
+    _set_ref = false;
 
     _robot = robot;
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
@@ -64,6 +90,9 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _tau_min = _tau_min_const-_h;
 
     _model->getRobotState("home", _q_home);
+    _model->setJointPosition(_q_home);
+    _model->setJointVelocity(Eigen::VectorXd(_q_home.size()).setConstant(0.0));
+    _model->update();
     _q = _q_home;
     _q_ref = _q;
 
@@ -131,6 +160,18 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _ee_task_left->useInertiaMatrix(true);
     _ee_task_left->update(_q);
     
+    left_trj.reset(new trajectory_utils::trajectory_generator(0.001, _ee_task_left->getBaseLink(),
+        _ee_task_left->getDistalLink()));
+    std::vector<KDL::Frame> left_wp;
+    KDL::Frame wp;
+    toKDLFrame(_ee_task_left->getReference(), wp);
+    
+    KDL::Frame wp_end = wp;
+    wp_end.p.y(wp_end.p.y()-0.2);
+    left_wp.push_back(wp);
+    left_wp.push_back(wp_end);
+    left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
+    
     _ee_task_left_pos.reset(new OpenSoT::SubTask(_ee_task_left, OpenSoT::Indices::range(0,2)));
     _ee_task_left_pos->update(_q);
     
@@ -142,8 +183,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        ) );
     _ee_task_right->setStiffnessDamping(Kc, Dc);
     _ee_task_right->useInertiaMatrix(true);
-    _ee_task_right->update(_q);
-    
+    _ee_task_right->update(_q);    
     _ee_task_right_pos.reset(new OpenSoT::SubTask(_ee_task_right, OpenSoT::Indices::range(0,2)));
     _ee_task_right_pos->update(_q);
     
@@ -209,17 +249,37 @@ void QPPVMPlugin::QPPVMControl(const double time)
     
     if(time-_start_time >= 2. && !_set_ref)
     {
-        Eigen::MatrixXd ref = _ee_task_right->getReference();
-        ref(2,3) += 0.5;
-        _ee_task_right->setReference(ref);
+        left_trj->updateTrj();
         
-        _set_ref = true;
-        std::cout<<"REF!!"<<std::endl;
+        Eigen::MatrixXd ref(4,4);
+        toEigenMatrix(left_trj->Pos(), ref);
+        _ee_task_left->setReference(ref);
+        
+//         std::cout<<"_ee_task_left->getReference(): \n"<<_ee_task_left->getReference()<<std::endl;
+//         std::cout<<"ref: \n"<<ref<<std::endl;
+//         std::cout<<"left_trj->Pos(): \n"<<left_trj->Pos()<<std::endl;
+//         
+        
+        
+        
+        if(time-_start_time-2.0 > left_trj->Duration())
+            _set_ref = true;
+        //std::cout<<"REF!!"<<std::endl;
     }
     
     
      _autostack->update(_q);
     
+//      if(time-_start_time >= 2.){
+//      std::cout<<"_ee_task_left->getActualPose(): \n"<<_ee_task_left->getActualPose()<<std::endl;
+//      std::cout<<"_ee_task_left->getb(): \n"<<_ee_task_left->getb()<<std::endl;
+//      std::cout<<"_ee_task_left->linearVelocityError: \n"<<_ee_task_left->linearVelocityError<<std::endl;
+//      std::cout<<"_ee_task_left->orientationVelocityError: \n"<<_ee_task_left->orientationVelocityError<<std::endl;
+//      std::cout<<"_ee_task_left->positionError \n"<<_ee_task_left->positionError<<std::endl;
+//      std::cout<<"_ee_task_left->orientationError \n"<<_ee_task_left->orientationError<<std::endl;
+//      std::cout<<"_ee_task_left->getSpringForce() \n"<<_ee_task_left->getSpringForce()<<std::endl;
+//      std::cout<<"_ee_task_left->getDamperForce() \n"<<_ee_task_left->getDamperForce()<<std::endl;
+//     }
     
      
 //      std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;

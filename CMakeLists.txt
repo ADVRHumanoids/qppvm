@@ -13,8 +13,7 @@ project(QPPVM_RT_plugin)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(XCM REQUIRED)
-#FIND_PACKAGE(iDynTree REQUIRED)
-#find_package(idynutils REQUIRED)
+find_package(trajectory_utils REQUIRED)
 find_package(OpenSoT REQUIRED)
 
 set(ENABLE_XENO CACHE BOOL "ON")
@@ -39,8 +38,7 @@ endif()
 
 # include
 include_directories(include
-                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${idynutils_INCLUDE_DIRS}
-                    ${iDynTree_INCLUDE_DIRS}
+                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS}
                     )
 
 ###########
@@ -56,7 +54,7 @@ endif()
 ##########
 ## Link ##
 ##########
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
+target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
 target_link_libraries(OpenSotIkTestPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 
 #############
