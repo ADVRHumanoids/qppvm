@@ -90,7 +90,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     Eigen::MatrixXd _d_matrix = d0.asDiagonal();
 
     _k_matrix *= Eigen::VectorXd(_k_matrix.size()).setConstant(100.0).asDiagonal();
-    _d_matrix *= Eigen::VectorXd(_k_matrix.size()).setConstant(1.0).asDiagonal();
+    _d_matrix *= Eigen::VectorXd(_d_matrix.size()).setConstant(1.0).asDiagonal();
     
     std::cout<<"_d_matrix: "<<_d_matrix<<std::endl;
     std::cout<<"_k_matrix: "<<_k_matrix<<std::endl;
@@ -300,8 +300,7 @@ void QPPVMPlugin::control_loop(double time, double period)
 
 void QPPVMPlugin::sense()
 {
-   // syncFromMotorSide(_robot, _model);
-    _model->syncFrom(*_robot);
+    syncFromMotorSide(_robot, _model);
     _model->getJointPosition(_q);
     _model->getJointVelocity(_dq);
 }
