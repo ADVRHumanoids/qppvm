@@ -73,38 +73,12 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->getDamping(d0);
 
 
-//     _k[_model->getDofIndex("j_arm2_5")] = k0[_model->getDofIndex("j_arm2_5")];
-//     _k[_model->getDofIndex("j_arm2_6")] = k0[_model->getDofIndex("j_arm2_6")];
-//     _k[_model->getDofIndex("j_arm2_7")] = k0[_model->getDofIndex("j_arm2_7")];
-//     _k[_model->getDofIndex("j_arm1_5")] = k0[_model->getDofIndex("j_arm1_5")];
-//     _k[_model->getDofIndex("j_arm1_6")] = k0[_model->getDofIndex("j_arm1_6")];
-//     _k[_model->getDofIndex("j_arm1_7")] = k0[_model->getDofIndex("j_arm1_7")];
-// 
-//     _d[_model->getDofIndex("j_arm2_5")] = d0[_model->getDofIndex("j_arm2_5")];
-//     _d[_model->getDofIndex("j_arm2_6")] = d0[_model->getDofIndex("j_arm2_6")];
-//     _d[_model->getDofIndex("j_arm2_7")] = d0[_model->getDofIndex("j_arm2_7")];
-//     _d[_model->getDofIndex("j_arm1_5")] = d0[_model->getDofIndex("j_arm1_5")];
-//     _d[_model->getDofIndex("j_arm1_6")] = d0[_model->getDofIndex("j_arm1_6")];
-//     _d[_model->getDofIndex("j_arm1_7")] = d0[_model->getDofIndex("j_arm1_7")];
-
-
     Eigen::VectorXd _k_matrix = k0;
     Eigen::VectorXd _d_matrix = d0;
 
     _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(100.0);
-//     _k_matrix[_model->getDofIndex("j_arm1_5")] = 100.;
-//     _k_matrix[_model->getDofIndex("j_arm1_6")] = 100.;
-//     _k_matrix[_model->getDofIndex("j_arm1_7")] = 100.;
-//     _k_matrix[_model->getDofIndex("j_arm2_5")] = 100.;
-//     _k_matrix[_model->getDofIndex("j_arm2_6")] = 100.;
-//     _k_matrix[_model->getDofIndex("j_arm2_7")] = 100.;
-    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(1.0);
-//     _d_matrix[_model->getDofIndex("j_arm1_5")] = 1.;
-//     _d_matrix[_model->getDofIndex("j_arm1_6")] = 1.;
-//     _d_matrix[_model->getDofIndex("j_arm1_7")] = 1.;
-//     _d_matrix[_model->getDofIndex("j_arm2_5")] = 1.;
-//     _d_matrix[_model->getDofIndex("j_arm2_6")] = 1.;
-//     _d_matrix[_model->getDofIndex("j_arm2_7")] = 1.;
+    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(0.1);
+
     
     std::cout<<"_d_matrix: "<<_d_matrix.transpose()<<std::endl;
     std::cout<<"_k_matrix: "<<_k_matrix.transpose()<<std::endl;
@@ -113,19 +87,6 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _joint_task.reset(new JointImpedanceCtrl(_q_home, *_model));
     _joint_task->setStiffness(_k_matrix.asDiagonal());
     _joint_task->setDamping(_d_matrix.asDiagonal());
-    std::vector<bool> active_joint_mask = _joint_task->getActiveJointsMask();
-    for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
-        active_joint_mask[i] = false;
-    active_joint_mask[_model->getDofIndex("torso_yaw")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_1")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_2")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_3")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_4")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_1")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_2")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_3")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_4")] = true;
-   // _joint_task->setActiveJointsMask(active_joint_mask);
     _joint_task->useInertiaMatrix(true);
     _joint_task->update(_q);
 
@@ -148,14 +109,6 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 1000.*Kc;
     Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 10.0*Dc; 
     _ee_task_left->setStiffnessDamping(Kc, Dc);
-    for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
-        active_joint_mask[i] = false;
-    active_joint_mask[_model->getDofIndex("torso_yaw")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_1")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_2")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_3")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm1_4")] = true;
-//     _ee_task_left->setActiveJointsMask(active_joint_mask);
     _ee_task_left->useInertiaMatrix(true);
     _ee_task_left->update(_q);
     
@@ -169,14 +122,6 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        "world"
                                                                        ) );
     _ee_task_right->setStiffnessDamping(Kc, Dc);
-    for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
-        active_joint_mask[i] = false;
-    active_joint_mask[_model->getDofIndex("torso_yaw")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_1")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_2")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_3")] = true;
-    active_joint_mask[_model->getDofIndex("j_arm2_4")] = true;
-//     _ee_task_right->setActiveJointsMask(active_joint_mask);
     _ee_task_right->useInertiaMatrix(true);
     _ee_task_right->update(_q);
     
