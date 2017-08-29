@@ -40,6 +40,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                         XBot::RobotInterface::Ptr robot)
 {
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
+    
+    _set_ref = true;
 
     _robot = robot;
     _model = XBot::ModelInterface::getModel(path_to_config_file);
@@ -86,19 +88,31 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 //     _d[_model->getDofIndex("j_arm1_7")] = d0[_model->getDofIndex("j_arm1_7")];
 
 
-    Eigen::MatrixXd _k_matrix = k0.asDiagonal();
-    Eigen::MatrixXd _d_matrix = d0.asDiagonal();
+    Eigen::VectorXd _k_matrix = k0;
+    Eigen::VectorXd _d_matrix = d0;
 
-    _k_matrix *= Eigen::VectorXd(_k_matrix.size()).setConstant(10.0).asDiagonal();
-    _d_matrix *= Eigen::VectorXd(_d_matrix.size()).setConstant(100.0).asDiagonal();
+    _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(100.0);
+//     _k_matrix[_model->getDofIndex("j_arm1_5")] = 100.;
+//     _k_matrix[_model->getDofIndex("j_arm1_6")] = 100.;
+//     _k_matrix[_model->getDofIndex("j_arm1_7")] = 100.;
+//     _k_matrix[_model->getDofIndex("j_arm2_5")] = 100.;
+//     _k_matrix[_model->getDofIndex("j_arm2_6")] = 100.;
+//     _k_matrix[_model->getDofIndex("j_arm2_7")] = 100.;
+    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(1.0);
+//     _d_matrix[_model->getDofIndex("j_arm1_5")] = 1.;
+//     _d_matrix[_model->getDofIndex("j_arm1_6")] = 1.;
+//     _d_matrix[_model->getDofIndex("j_arm1_7")] = 1.;
+//     _d_matrix[_model->getDofIndex("j_arm2_5")] = 1.;
+//     _d_matrix[_model->getDofIndex("j_arm2_6")] = 1.;
+//     _d_matrix[_model->getDofIndex("j_arm2_7")] = 1.;
     
-    std::cout<<"_d_matrix: "<<_d_matrix<<std::endl;
-    std::cout<<"_k_matrix: "<<_k_matrix<<std::endl;
+    std::cout<<"_d_matrix: "<<_d_matrix.transpose()<<std::endl;
+    std::cout<<"_k_matrix: "<<_k_matrix.transpose()<<std::endl;
 
     _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
     _joint_task.reset(new JointImpedanceCtrl(_q_home, *_model));
-    _joint_task->setStiffness(_k_matrix);
-    _joint_task->setDamping(_d_matrix);
+    _joint_task->setStiffness(_k_matrix.asDiagonal());
+    _joint_task->setDamping(_d_matrix.asDiagonal());
     std::vector<bool> active_joint_mask = _joint_task->getActiveJointsMask();
     for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
         active_joint_mask[i] = false;
@@ -130,9 +144,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        _robot->chain("left_arm").getTipLinkName(),
                                                                        "world"
                                                                        ) );
-    _ee_task_left_pos.reset(new OpenSoT::SubTask(_ee_task_left, OpenSoT::Indices::range(0,2)));
     
-    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 100.*Kc;
+    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 1000.*Kc;
     Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 10.0*Dc; 
     _ee_task_left->setStiffnessDamping(Kc, Dc);
     for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
@@ -142,8 +155,11 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     active_joint_mask[_model->getDofIndex("j_arm1_2")] = true;
     active_joint_mask[_model->getDofIndex("j_arm1_3")] = true;
     active_joint_mask[_model->getDofIndex("j_arm1_4")] = true;
-    //_ee_task_left->setActiveJointsMask(active_joint_mask);
+//     _ee_task_left->setActiveJointsMask(active_joint_mask);
     _ee_task_left->useInertiaMatrix(true);
+    _ee_task_left->update(_q);
+    
+    _ee_task_left_pos.reset(new OpenSoT::SubTask(_ee_task_left, OpenSoT::Indices::range(0,2)));
     _ee_task_left_pos->update(_q);
     
     _ee_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ARM", 
@@ -152,8 +168,6 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        _robot->chain("right_arm").getTipLinkName(),
                                                                        "world"
                                                                        ) );
-    _ee_task_right_pos.reset(new OpenSoT::SubTask(_ee_task_right, OpenSoT::Indices::range(0,2)));
-    
     _ee_task_right->setStiffnessDamping(Kc, Dc);
     for(unsigned int i = 0; i < active_joint_mask.size(); ++i)
         active_joint_mask[i] = false;
@@ -162,8 +176,11 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     active_joint_mask[_model->getDofIndex("j_arm2_2")] = true;
     active_joint_mask[_model->getDofIndex("j_arm2_3")] = true;
     active_joint_mask[_model->getDofIndex("j_arm2_4")] = true;
-    //_ee_task_right->setActiveJointsMask(active_joint_mask);
+//     _ee_task_right->setActiveJointsMask(active_joint_mask);
     _ee_task_right->useInertiaMatrix(true);
+    _ee_task_right->update(_q);
+    
+    _ee_task_right_pos.reset(new OpenSoT::SubTask(_ee_task_right, OpenSoT::Indices::range(0,2)));
     _ee_task_right_pos->update(_q);
     
 //    _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW",
@@ -189,13 +206,13 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 //     _joint_task->useInertiaMatrix(false);
      
 
-    _autostack = ( (_ee_task_left_pos + _ee_task_right_pos) 
+    _autostack = ( (_ee_task_right_pos + _ee_task_left_pos) 
                     /*/ (_elbow_task_left + _elbow_task_right)*/ 
                     / _joint_task ) << _torque_limits;
     
     
 //      QPOases_sot::Stack stack_of_tasks;
-//      stack_of_tasks.push_back(_ee_task_left);
+//      stack_of_tasks.push_back(_ee_task_left_pos);
 //      stack_of_tasks.push_back(_joint_task);
      
 
@@ -211,7 +228,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     return true;
 }
 
-void QPPVMPlugin::QPPVMControl()
+void QPPVMPlugin::QPPVMControl(const double time)
 {
     _tau_max = _tau_max_const-_h;
     _tau_min = _tau_min_const-_h;
@@ -224,7 +241,19 @@ void QPPVMPlugin::QPPVMControl()
 
      //_torque_limits->update(_q);
      //_joint_task->update(_q);
-     //_ee_task_left->update(_q);
+//     _ee_task_left_pos->update(_q);
+    
+    if(time-_start_time >= 2. && !_set_ref)
+    {
+        Eigen::MatrixXd ref = _ee_task_right->getReference();
+        ref(2,3) += 0.5;
+        _ee_task_right->setReference(ref);
+        
+        _set_ref = true;
+        std::cout<<"REF!!"<<std::endl;
+    }
+    
+    
      _autostack->update(_q);
     
     
@@ -285,7 +314,7 @@ void QPPVMPlugin::control_loop(double time, double period)
     _model->computeNonlinearTerm(_h);
 
 
-    QPPVMControl();
+    QPPVMControl(time);
     
     // set the joint effort on the model and then synchronize the effort on the robot
     _model->setJointEffort(_tau_d);
