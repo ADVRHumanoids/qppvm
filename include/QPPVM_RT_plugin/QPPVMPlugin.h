@@ -71,7 +71,6 @@ namespace demo {
         OpenSoT::constraints::torque::TorqueLimits::Ptr _torque_limits;
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
         OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _ee_task_right, _ee_task_left;
-        OpenSoT::SubTask::Ptr _ee_task_left_pos, _ee_task_right_pos; 
         OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _elbow_task_right, _elbow_task_left;
         OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
 

@@ -67,13 +67,13 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 {
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
     
-    _set_ref = false;
+    _set_ref = true;
 
     _robot = robot;
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
     _model = XBot::ModelInterface::getModel(
         "/home/centauro/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
-    _model->syncFrom(*_robot);
+    //_model->syncFrom(*_robot);
     
     _model->initLog(_matlogger, 30000);
 
@@ -84,7 +84,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _tau_d.resize(_model->getJointNum());
     _tau_d.setZero(_tau_d.size());
 
-    sense();
+    //sense();
     _model->computeNonlinearTerm(_h);
     _tau_max = _tau_max_const-_h;
     _tau_min = _tau_min_const-_h;
@@ -93,6 +93,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->setJointPosition(_q_home);
     _model->setJointVelocity(Eigen::VectorXd(_q_home.size()).setConstant(0.0));
     _model->update();
+    
     _q = _q_home;
     _q_ref = _q;
 
@@ -124,14 +125,15 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->getDamping(_d_matrix);
     
     
-    _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(100.0);
-    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(0.1);
+    _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(0.0);
+    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(5.0);
 
     
-    std::cout<<"_d_matrix: "<<_d_matrix.transpose()<<std::endl;
-    std::cout<<"_k_matrix: "<<_k_matrix.transpose()<<std::endl;
+    std::cout<<"_d_matrix: \n"<<_d_matrix.transpose()<<std::endl;
+    std::cout<<"_k_matrix: \n"<<_k_matrix.transpose()<<std::endl;
 
     _torque_limits.reset(new TorqueLimits(_tau_max, _tau_min));
+    
     _joint_task.reset(new JointImpedanceCtrl(_q_home, *_model));
     _joint_task->setStiffness(_k_matrix.asDiagonal());
     _joint_task->setDamping(_d_matrix.asDiagonal());
@@ -145,16 +147,16 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 //    std::cout << "QMIN: " << _q_min.transpose() << std::endl;
 //    std::cout << "QHOME: " << _q_home.transpose() << std::endl;
 //    std::cout << "QMAX: " << _q_max.transpose() << std::endl;
-
-
+    
+    
     _ee_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ARM", 
                                                                        _q, 
                                                                        *_model, 
-                                                                       _robot->chain("left_arm").getTipLinkName(),
-                                                                       "world"
-                                                                       ) );
+                                                                       "arm1_7",
+                                                                       "world",
+                                                                       OpenSoT::Indices::range(0,2)) );
     
-    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 1000.*Kc;
+    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 500.*Kc;
     Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 10.0*Dc; 
     _ee_task_left->setStiffnessDamping(Kc, Dc);
     _ee_task_left->useInertiaMatrix(true);
@@ -172,34 +174,29 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     left_wp.push_back(wp_end);
     left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
     
-    _ee_task_left_pos.reset(new OpenSoT::SubTask(_ee_task_left, OpenSoT::Indices::range(0,2)));
-    _ee_task_left_pos->update(_q);
-    
     _ee_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ARM", 
                                                                        _q, 
                                                                        *_model, 
-                                                                       _robot->chain("right_arm").getTipLinkName(),
-                                                                       "world"
-                                                                       ) );
+                                                                       "arm2_7",
+                                                                       "world",
+                                                                       OpenSoT::Indices::range(0,2)) );
     _ee_task_right->setStiffnessDamping(Kc, Dc);
     _ee_task_right->useInertiaMatrix(true);
     _ee_task_right->update(_q);    
-    _ee_task_right_pos.reset(new OpenSoT::SubTask(_ee_task_right, OpenSoT::Indices::range(0,2)));
-    _ee_task_right_pos->update(_q);
     
-//    _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW",
-//                                                                          _q_home,
-//                                                                           *_model,
-//                                                                           _robot->chain("left_arm").getUrdfLinks()[4]->name,
-//                                                                          "world"
-//                                                                         ) );
+   _elbow_task_left.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("LEFT_ELBOW",
+                                                                         _q,
+                                                                          *_model,
+                                                                          "arm1_4",
+                                                                         "world",
+                                                                        OpenSoT::Indices::range(0,2)) );
     
-//    _elbow_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ELBOW",
-//                                                                          _q_home,
-//                                                                           *_model,
-//                                                                           _robot->chain("right_arm").getUrdfLinks()[4]->name,
-//                                                                          "world"
-//                                                                         ) );
+   _elbow_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ELBOW",
+                                                                         _q,
+                                                                          *_model,
+                                                                          "arm2_4",
+                                                                         "world",
+                                                                        OpenSoT::Indices::range(0,2)) );
     
 
 //    _joint_limits.reset( new OpenSoT::constraints::torque::JointLimits(_q_home, _q_max, _q_min, *_model) );
@@ -210,17 +207,19 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 //     _joint_task->useInertiaMatrix(false);
      
 
-    _autostack = ( (_ee_task_right_pos + _ee_task_left_pos) 
-                    /*/ (_elbow_task_left + _elbow_task_right)*/ 
-                    / _joint_task ) << _torque_limits;
-    
+    _autostack =  ((_ee_task_right + _ee_task_left)
+                    // /(_elbow_task_left + _elbow_task_right))<< _torque_limits; 
+                     /(_joint_task ))<< _torque_limits; 
+                    
+                    
     
 //      QPOases_sot::Stack stack_of_tasks;
-//      stack_of_tasks.push_back(_ee_task_left_pos);
+//      stack_of_tasks.push_back((_ee_task_left));
 //      stack_of_tasks.push_back(_joint_task);
      
 
     _solver.reset(new QPOases_sot(_autostack->getStack(), _autostack->getBounds(), 1.0 ) );
+    _solver->log(_matlogger);
     
 //     qpOASES::Options opt;
 //     opt.setToReliable();
@@ -267,40 +266,45 @@ void QPPVMPlugin::QPPVMControl(const double time)
         //std::cout<<"REF!!"<<std::endl;
     }
     
+    _autostack->update(_q);
+    _autostack->log(_matlogger);
     
-     _autostack->update(_q);
-    
-//      if(time-_start_time >= 2.){
-//      std::cout<<"_ee_task_left->getActualPose(): \n"<<_ee_task_left->getActualPose()<<std::endl;
-//      std::cout<<"_ee_task_left->getb(): \n"<<_ee_task_left->getb()<<std::endl;
-//      std::cout<<"_ee_task_left->linearVelocityError: \n"<<_ee_task_left->linearVelocityError<<std::endl;
-//      std::cout<<"_ee_task_left->orientationVelocityError: \n"<<_ee_task_left->orientationVelocityError<<std::endl;
-//      std::cout<<"_ee_task_left->positionError \n"<<_ee_task_left->positionError<<std::endl;
-//      std::cout<<"_ee_task_left->orientationError \n"<<_ee_task_left->orientationError<<std::endl;
-//      std::cout<<"_ee_task_left->getSpringForce() \n"<<_ee_task_left->getSpringForce()<<std::endl;
-//      std::cout<<"_ee_task_left->getDamperForce() \n"<<_ee_task_left->getDamperForce()<<std::endl;
-//     }
+//     if(time-_start_time >= 2.){
+//       std::cout<<"_ee_task_left->getReference(): \n"<<_ee_task_left->getReference()<<std::endl;
+//       std::cout<<"_ee_task_left->getActualPose(): \n"<<_ee_task_left->getActualPose()<<std::endl;
+//       std::cout<<"_ee_task_left_pos->getb(): \n"<<_ee_task_left_pos->getb()<<std::endl;
+//       std::cout<<"_ee_task_left->getb(): \n"<<_ee_task_left->getb()<<std::endl;
+// //      std::cout<<"_ee_task_left->linearVelocityError: \n"<<_ee_task_left->linearVelocityError<<std::endl;
+// //      std::cout<<"_ee_task_left->orientationVelocityError: \n"<<_ee_task_left->orientationVelocityError<<std::endl;
+//       std::cout<<"_ee_task_left->positionError \n"<<_ee_task_left->positionError<<std::endl;
+// //      std::cout<<"_ee_task_left->orientationError \n"<<_ee_task_left->orientationError<<std::endl;
+//       std::cout<<"_ee_task_left->getSpringForce() \n"<<_ee_task_left->getSpringForce()<<std::endl;
+//       std::cout<<"_ee_task_left->getDamperForce() \n"<<_ee_task_left->getDamperForce()<<std::endl;
+// //     }
     
      
 //      std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;
-     _matlogger->add("left_error", _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce());
      
 
     if(!_solver->solve(_tau_d)){
         _tau_d.setZero(_tau_d.size());
         std::cout<<"SOLVER ERROR!"<<std::endl;
     }
+    _solver->log(_matlogger);
     
-    _matlogger->add("left_task_error", _ee_task_left->getA()*_tau_d - _ee_task_left->getb());
-
     
+   
+    _matlogger->add("tau_qp", _tau_d);
     
     _tau_d = _tau_d + _h;
+    
+     _matlogger->add("tau_desired", _tau_d);
 }
 
 void QPPVMPlugin::on_start(double time)
 {
     sense();
+    _model->computeNonlinearTerm(_h);
     
     _start_time = time;
     _robot->setStiffness(_k);
@@ -345,7 +349,6 @@ void QPPVMPlugin::control_loop(double time, double period)
 
     _robot->setReferenceFrom(*_model, XBot::Sync::Effort);
 
-    _matlogger->add("tau_desired", _tau_d);
     _matlogger->add("time_matlogger", time);
 
     
