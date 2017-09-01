@@ -72,7 +72,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _robot = robot;
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
     _model = XBot::ModelInterface::getModel(
-        "/home/centauro/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
+        "/home/embedded/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
     //_model->syncFrom(*_robot);
     
     _model->initLog(_matlogger, 30000);
@@ -125,8 +125,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->getDamping(_d_matrix);
     
     
-    _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(0.0);
-    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(5.0);
+    _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(5.0);
+    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(2.0);
 
     
     std::cout<<"_d_matrix: \n"<<_d_matrix.transpose()<<std::endl;
