@@ -156,8 +156,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        "world",
                                                                        OpenSoT::Indices::range(0,2)) );
     
-    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 500.*Kc;
-    Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 10.0*Dc; 
+    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 700.*Kc;
+    Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 20.0*Dc; 
     _ee_task_left->setStiffnessDamping(Kc, Dc);
     _ee_task_left->useInertiaMatrix(true);
     _ee_task_left->update(_q);
