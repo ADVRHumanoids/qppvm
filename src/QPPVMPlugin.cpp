@@ -78,7 +78,6 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->initLog(_matlogger, 30000);
 
     _model->getEffortLimits(_tau_max_const);
-    //_tau_max_const[_model->getDofIndex("j_arm2_4")] = 20.0; //PAY ATTENTION! 
     _tau_min_const = -_tau_max_const;
     std::cout<<"tau_max_const: "<<_tau_max_const<<std::endl;
 
@@ -157,8 +156,8 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
                                                                        "world",
                                                                        OpenSoT::Indices::range(0,2)) );
     
-    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 700.*Kc; Kc(1,1) = 50.0;
-    Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 70.0*Dc; Dc(1,1) = 1.; 
+    Eigen::MatrixXd Kc(6,6); Kc.setIdentity(6,6); Kc = 700.*Kc; //Kc(1,1) = 50.0;
+    Eigen::MatrixXd Dc(6,6); Dc.setIdentity(6,6); Dc = 70.0*Dc; //Dc(1,1) = 1.; 
     _ee_task_left->setStiffnessDamping(Kc, Dc);
     _ee_task_left->useInertiaMatrix(true);
     _ee_task_left->update(_q);
