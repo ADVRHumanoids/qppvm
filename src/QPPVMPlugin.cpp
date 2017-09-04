@@ -165,15 +165,6 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     
     left_trj.reset(new trajectory_utils::trajectory_generator(0.001, _ee_task_left->getBaseLink(),
         _ee_task_left->getDistalLink()));
-    std::vector<KDL::Frame> left_wp;
-    KDL::Frame wp;
-    toKDLFrame(_ee_task_left->getReference(), wp);
-    
-    KDL::Frame wp_end = wp;
-    wp_end.p.y(wp_end.p.y()-0.2);
-    left_wp.push_back(wp);
-    left_wp.push_back(wp_end);
-    left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
     
     _ee_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ARM", 
                                                                        _q, 
@@ -328,6 +319,16 @@ void QPPVMPlugin::on_start(double time)
     //_joint_task->update(_q);
     //_ee_task_left->update(_q);
     _autostack->update(_q);
+    
+    std::vector<KDL::Frame> left_wp;
+    KDL::Frame wp;
+    toKDLFrame(_ee_task_left->getReference(), wp);
+    
+    KDL::Frame wp_end = wp;
+    wp_end.p.y(wp_end.p.y()-0.2);
+    left_wp.push_back(wp);
+    left_wp.push_back(wp_end);
+    left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
    
     std::cout << "-------------------------------------------------------------------------" << std::endl;
     std::cout << "Right task error: \n" << _ee_task_right->getSpringForce() + _ee_task_right->getDamperForce() << std::endl;
