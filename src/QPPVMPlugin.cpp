@@ -72,7 +72,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _robot = robot;
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
     _model = XBot::ModelInterface::getModel(
-        "/home/embedded/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
+        "/home/centauro/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
     //_model->syncFrom(*_robot);
     
     _model->initLog(_matlogger, 30000);
@@ -259,6 +259,7 @@ void QPPVMPlugin::QPPVMControl(const double time)
             _set_ref = true;
         //std::cout<<"REF!!"<<std::endl;
     }
+    _ref = _start_pose;
     _ref.p.y(_start_pose.p.y()+0.1*std::sin(time-_start_time));
     _ee_task_left->setReference(_ref);
     
@@ -324,7 +325,7 @@ void QPPVMPlugin::on_start(double time)
     _autostack->update(_q);
     
     
-    _start_pose = _ee_task_left->getActualPoseKDL();
+    _model->getPose(_ee_task_left->getDistalLink(), _start_pose);
     if(!_set_ref)
     {
         std::vector<KDL::Frame> left_wp;
