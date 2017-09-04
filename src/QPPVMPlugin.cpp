@@ -260,7 +260,8 @@ void QPPVMPlugin::QPPVMControl(const double time)
         //std::cout<<"REF!!"<<std::endl;
     }
     _ref = _start_pose;
-    _ref.p.y(_start_pose.p.y()+0.1*std::sin(time-_start_time));
+    _ref.p.y(_start_pose.p.y()+0.15*std::sin(time-_start_time));
+    _ref.p.z(_start_pose.p.z()+0.15*(1.0-std::cos(time-_start_time)));
     _ee_task_left->setReference(_ref);
     
     
