@@ -67,12 +67,12 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 {
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
     
-    _set_ref = false;
+    _set_ref = true;
 
     _robot = robot;
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
     _model = XBot::ModelInterface::getModel(
-        "/home/centauro/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
+        "/home/embedded/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
     //_model->syncFrom(*_robot);
     
     _model->initLog(_matlogger, 30000);
@@ -259,6 +259,9 @@ void QPPVMPlugin::QPPVMControl(const double time)
             _set_ref = true;
         //std::cout<<"REF!!"<<std::endl;
     }
+    _ref.p.y(_start_pose.p.y()+0.1*std::sin(time-_start_time));
+    _ee_task_left->setReference(_ref);
+    
     
     _autostack->update(_q);
     _autostack->log(_matlogger);
@@ -320,15 +323,20 @@ void QPPVMPlugin::on_start(double time)
     //_ee_task_left->update(_q);
     _autostack->update(_q);
     
-    std::vector<KDL::Frame> left_wp;
-    KDL::Frame wp;
-    toKDLFrame(_ee_task_left->getReference(), wp);
     
-    KDL::Frame wp_end = wp;
-    wp_end.p.y(wp_end.p.y()-0.2);
-    left_wp.push_back(wp);
-    left_wp.push_back(wp_end);
-    left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
+    _start_pose = _ee_task_left->getActualPoseKDL();
+    if(!_set_ref)
+    {
+        std::vector<KDL::Frame> left_wp;
+        KDL::Frame wp;
+        toKDLFrame(_ee_task_left->getReference(), wp);
+    
+        KDL::Frame wp_end = wp;
+        wp_end.p.y(wp_end.p.y()-0.2);
+        left_wp.push_back(wp);
+        left_wp.push_back(wp_end);
+        left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
+    }
    
     std::cout << "-------------------------------------------------------------------------" << std::endl;
     std::cout << "Right task error: \n" << _ee_task_right->getSpringForce() + _ee_task_right->getDamperForce() << std::endl;

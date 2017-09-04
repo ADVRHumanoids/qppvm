@@ -99,6 +99,10 @@ namespace demo {
         bool _homing_done;
 
         double _homing_time;
+        
+        KDL::Frame _start_pose;
+        KDL::Frame _ref;
+        
 
         void sense();
 
