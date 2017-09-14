@@ -331,7 +331,7 @@ void QPPVMPlugin::on_start(double time)
     {
         std::vector<KDL::Frame> left_wp;
         KDL::Frame wp;
-        toKDLFrame(_ee_task_left->getReference(), wp);
+        _ee_task_left->getReference(wp);
     
         KDL::Frame wp_end = wp;
         wp_end.p.y(wp_end.p.y()-0.2);
@@ -344,10 +344,18 @@ void QPPVMPlugin::on_start(double time)
     _joint_task->getSpringForce(joint_spring_force);
     _joint_task->getDampingForce(joint_spring_damping);
 
+    Eigen::VectorXd left_spring_force, left_spring_damping;
+    _ee_task_left->getSpringForce(left_spring_force);
+    _ee_task_left->getDamperForce(left_spring_damping);
+
+    Eigen::VectorXd right_spring_force, right_spring_damping;
+    _ee_task_right->getSpringForce(right_spring_force);
+    _ee_task_right->getDamperForce(right_spring_damping);
+
 
     std::cout << "-------------------------------------------------------------------------" << std::endl;
-    std::cout << "Right task error: \n" << _ee_task_right->getSpringForce() + _ee_task_right->getDamperForce() << std::endl;
-    std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;
+    std::cout << "Right task error: \n" << right_spring_force + right_spring_damping << std::endl;
+    std::cout << "Left task error: \n" << left_spring_force + left_spring_damping << std::endl;
     std::cout << "Joint task error: \n" << joint_spring_force +  joint_spring_damping<< std::endl;
     
     
