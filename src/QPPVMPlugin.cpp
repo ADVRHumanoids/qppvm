@@ -67,7 +67,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
 {
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
     
-    _set_ref = true;
+    _set_ref = false;
 
     _robot = robot;
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
@@ -310,11 +310,20 @@ void QPPVMPlugin::on_start(double time)
     
     _model->getPose(_ee_task_left->getDistalLink(), _start_pose);
     
-   
+    Eigen::VectorXd joint_spring, joint_damping,
+                    left_spring, left_damping,
+                    right_spring, right_damping;
+    _joint_task->getSpringForce(joint_spring);
+    _joint_task->getDampingForce(joint_damping);
+    _ee_task_left->getSpringForce(left_spring);
+    _ee_task_left->getDamperForce(left_damping);
+    _ee_task_right->getSpringForce(right_spring);
+    _ee_task_right->getDamperForce(right_damping);
+    
     std::cout << "-------------------------------------------------------------------------" << std::endl;
-    std::cout << "Right task error: \n" << _ee_task_right->getSpringForce() + _ee_task_right->getDamperForce() << std::endl;
-    std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;
-    std::cout << "Joint task error: \n" << _joint_task->getSpringForce() + _joint_task->getDampingForce() << std::endl;
+    std::cout << "Right task error: \n" << right_spring + right_damping << std::endl;
+    std::cout << "Left task error: \n" << left_spring + left_damping<< std::endl;
+    std::cout << "Joint task error: \n" << joint_spring + joint_damping << std::endl;
     
     
 }       
