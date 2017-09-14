@@ -28,7 +28,6 @@
 #include <OpenSoT/constraints/torque/JointLimits.h>
 #include <OpenSoT/utils/AutoStack.h>
 #include <OpenSoT/SubTask.h>
-#include <trajectory_utils/trajectory_utils.h>
 
 
 #include <XBotInterface/Logger.hpp>
@@ -47,8 +46,6 @@ namespace demo {
         virtual void on_start(double time);
         virtual void control_loop(double time, double period);
         virtual bool close();
-        
-        boost::shared_ptr<trajectory_utils::trajectory_generator> left_trj;
 
     protected:
 

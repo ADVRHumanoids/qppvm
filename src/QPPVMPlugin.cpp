@@ -78,7 +78,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _model->initLog(_matlogger, 30000);
 
     _model->getEffortLimits(_tau_max_const);
-//    _tau_max_const.setConstant(_model->getJointNum(), 20.0);
+//     _tau_max_const.setConstant(_model->getJointNum(), 20.0); //PAY ATTENTION
     _tau_min_const = -_tau_max_const;
     std::cout<<"tau_max_const: "<<_tau_max_const<<std::endl;
 
@@ -162,10 +162,7 @@ bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
     _ee_task_left->setStiffnessDamping(Kc, Dc);
     _ee_task_left->useInertiaMatrix(true);
     _ee_task_left->update(_q);
-    
-    left_trj.reset(new trajectory_utils::trajectory_generator(0.001, _ee_task_left->getBaseLink(),
-        _ee_task_left->getDistalLink()));
-    
+     
     _ee_task_right.reset( new OpenSoT::tasks::torque::CartesianImpedanceCtrl("RIGHT_ARM", 
                                                                        _q, 
                                                                        *_model, 
@@ -240,29 +237,14 @@ void QPPVMPlugin::QPPVMControl(const double time)
      //_joint_task->update(_q);
 //     _ee_task_left_pos->update(_q);
     
-    if(time-_start_time >= 2. && !_set_ref)
+    
+    if(_set_ref)
     {
-        left_trj->updateTrj();
-        
-        Eigen::MatrixXd ref(4,4);
-        toEigenMatrix(left_trj->Pos(), ref);
-        _ee_task_left->setReference(ref);
-        
-//         std::cout<<"_ee_task_left->getReference(): \n"<<_ee_task_left->getReference()<<std::endl;
-//         std::cout<<"ref: \n"<<ref<<std::endl;
-//         std::cout<<"left_trj->Pos(): \n"<<left_trj->Pos()<<std::endl;
-//         
-        
-        
-        
-        if(time-_start_time-2.0 > left_trj->Duration())
-            _set_ref = true;
-        //std::cout<<"REF!!"<<std::endl;
+        _ref = _start_pose;
+        _ref.p.y(_start_pose.p.y()+0.15*std::sin(time-_start_time));
+        _ref.p.z(_start_pose.p.z()+0.15*(1.0-std::cos(time-_start_time)));
+        _ee_task_left->setReference(_ref);
     }
-    _ref = _start_pose;
-    _ref.p.y(_start_pose.p.y()+0.15*std::sin(time-_start_time));
-    _ref.p.z(_start_pose.p.z()+0.15*(1.0-std::cos(time-_start_time)));
-    _ee_task_left->setReference(_ref);
     
     
     _autostack->update(_q);
@@ -327,36 +309,12 @@ void QPPVMPlugin::on_start(double time)
     
     
     _model->getPose(_ee_task_left->getDistalLink(), _start_pose);
-    if(!_set_ref)
-    {
-        std::vector<KDL::Frame> left_wp;
-        KDL::Frame wp;
-        _ee_task_left->getReference(wp);
     
-        KDL::Frame wp_end = wp;
-        wp_end.p.y(wp_end.p.y()-0.2);
-        left_wp.push_back(wp);
-        left_wp.push_back(wp_end);
-        left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
-    }
    
-    Eigen::VectorXd joint_spring_force, joint_spring_damping;
-    _joint_task->getSpringForce(joint_spring_force);
-    _joint_task->getDampingForce(joint_spring_damping);
-
-    Eigen::VectorXd left_spring_force, left_spring_damping;
-    _ee_task_left->getSpringForce(left_spring_force);
-    _ee_task_left->getDamperForce(left_spring_damping);
-
-    Eigen::VectorXd right_spring_force, right_spring_damping;
-    _ee_task_right->getSpringForce(right_spring_force);
-    _ee_task_right->getDamperForce(right_spring_damping);
-
-
     std::cout << "-------------------------------------------------------------------------" << std::endl;
-    std::cout << "Right task error: \n" << right_spring_force + right_spring_damping << std::endl;
-    std::cout << "Left task error: \n" << left_spring_force + left_spring_damping << std::endl;
-    std::cout << "Joint task error: \n" << joint_spring_force +  joint_spring_damping<< std::endl;
+    std::cout << "Right task error: \n" << _ee_task_right->getSpringForce() + _ee_task_right->getDamperForce() << std::endl;
+    std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;
+    std::cout << "Joint task error: \n" << _joint_task->getSpringForce() + _joint_task->getDampingForce() << std::endl;
     
     
 }       
