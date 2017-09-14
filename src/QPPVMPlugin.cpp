@@ -340,10 +340,15 @@ void QPPVMPlugin::on_start(double time)
         left_trj->addMinJerkTrj(left_wp, TRJ_TIME);
     }
    
+    Eigen::VectorXd joint_spring_force, joint_spring_damping;
+    _joint_task->getSpringForce(joint_spring_force);
+    _joint_task->getDampingForce(joint_spring_damping);
+
+
     std::cout << "-------------------------------------------------------------------------" << std::endl;
     std::cout << "Right task error: \n" << _ee_task_right->getSpringForce() + _ee_task_right->getDamperForce() << std::endl;
     std::cout << "Left task error: \n" << _ee_task_left->getSpringForce() + _ee_task_left->getDamperForce() << std::endl;
-    std::cout << "Joint task error: \n" << _joint_task->getSpringForce() + _joint_task->getDampingForce() << std::endl;
+    std::cout << "Joint task error: \n" << joint_spring_force +  joint_spring_damping<< std::endl;
     
     
 }       
