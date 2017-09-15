@@ -33,28 +33,6 @@ using namespace OpenSoT::constraints::torque;
 using namespace OpenSoT::tasks::torque;
 using namespace OpenSoT::solvers;
 
-void toKDLFrame(const Eigen::MatrixXd& T, KDL::Frame& F)
-{
-    F.p.x(T(0,3)); 
-    F.p.y(T(1,3)); 
-    F.p.z(T(2,3));
-    for(unsigned int i = 0; i < 3; ++i)
-    {
-        for(unsigned int j = 0; j < 3; ++j)
-            F.M(i,j) = T(i,j);
-    }
-}
-
-void toEigenMatrix(const KDL::Frame& F, Eigen::MatrixXd& T)
-{
-    T.setIdentity(4,4);
-    T(0,3) = F.p.x(); T(1,3) = F.p.y(); T(2,3) = F.p.z();
-    for(unsigned int i = 0; i < 3; ++i)
-    {
-        for(unsigned int j = 0; j < 3; ++j)
-            T(i,j) = F.M(i,j);
-    }
-}
 
 QPPVMPlugin::QPPVMPlugin()
 {
