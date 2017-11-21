@@ -39,15 +39,13 @@ QPPVMPlugin::QPPVMPlugin()
 
 }
 
-bool QPPVMPlugin::init_control_plugin(  std::string path_to_config_file,
-                                        XBot::SharedMemory::Ptr shared_memory,
-                                        XBot::RobotInterface::Ptr robot)
+bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 {
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
     
     _set_ref = false;
 
-    _robot = robot;
+    _robot = handle->getRobotInterface();
     //_model = XBot::ModelInterface::getModel(path_to_config_file);
     _model = XBot::ModelInterface::getModel(
         "/home/centauro/advr-superbuild/configs/ADVR_shared/centauro/configs/config_centauro_fixed_wrists.yaml");
