@@ -11,6 +11,7 @@ project(QPPVM_RT_plugin)
 
 # Add cmake dir and include custom macros
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include(MacroYCMInstallLibrary)
 
 find_package(XCM REQUIRED)
 find_package(trajectory_utils REQUIRED)
@@ -45,7 +46,7 @@ include_directories(include
 ## Build ##
 ###########
 add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
-add_library(OpenSotIkTestPlugin SHARED src/OpenSotIkTestPlugin.cpp include)
+add_library(ForceAccPlugin SHARED src/ForceAcc.cpp include)
 
 if ( Xenomai_FOUND )
 #     set_xeno_flags(QPPVMPlugin)
@@ -55,94 +56,15 @@ endif()
 ## Link ##
 ##########
 target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
-target_link_libraries(OpenSotIkTestPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
+target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
+
+
 
 #############
 ## Install ##
 #############
 
-# QPPVM PLUGIN ##################################################
+ycm_library_install(QPPVMPlugin 1 0 0)
+ycm_library_install(ForceAccPlugin 1 0 0)
 
-set(VARS_PREFIX "QPPVMPlugin")
-
-set(QPPVMPlugin_MAJOR_VERSION 0)
-set(QPPVMPlugin_MINOR_VERSION 1)
-set(QPPVMPlugin_PATCH_VERSION 0)
-set(QPPVMPlugin_VERSION ${QPPVMPlugin_MAJOR_VERSION}.${QPPVMPlugin_MINOR_VERSION}.${QPPVMPlugin_PATCH_VERSION})
-
-find_package(YCM REQUIRED)
-include(YCMDefaultDirs)
-ycm_default_dirs(${VARS_PREFIX})
-
-target_include_directories(QPPVMPlugin PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
-                                                "$<INSTALL_INTERFACE:${${VARS_PREFIX}_INSTALL_INCLUDEDIR}>")
-
-set_target_properties(QPPVMPlugin PROPERTIES VERSION ${${VARS_PREFIX}_VERSION}
-                                               SOVERSION ${${VARS_PREFIX}_VERSION})
-
-install(DIRECTORY include/
-        DESTINATION "${${VARS_PREFIX}_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING PATTERN "*.h*")
-
-install(TARGETS QPPVMPlugin
-        EXPORT QPPVMPlugin
-        ARCHIVE DESTINATION "${${VARS_PREFIX}_INSTALL_BINDIR}" COMPONENT lib
-        RUNTIME DESTINATION "${${VARS_PREFIX}_INSTALL_BINDIR}" COMPONENT bin
-        LIBRARY DESTINATION "${${VARS_PREFIX}_INSTALL_LIBDIR}" COMPONENT shlib)
-
-
-
-#enabling it will add all QPPVMPlugin dependencies as dependencies for third party users
-set_property(GLOBAL APPEND PROPERTY ${VARS_PREFIX}_TARGETS QPPVMPlugin)
-
-
-include(InstallBasicPackageFiles)
-install_basic_package_files(QPPVMPlugin VARS_PREFIX ${VARS_PREFIX}
-                                    VERSION ${${VARS_PREFIX}_VERSION}
-                                    COMPATIBILITY SameMajorVersion
-                                    TARGETS_PROPERTY ${VARS_PREFIX}_TARGETS
-                                    NO_CHECK_REQUIRED_COMPONENTS_MACRO)
-
-# OPENSOTIK PLUGIN ##################################################
-
-
-set(VARS_PREFIX "OpenSotIkTestPlugin")
-
-set(OpenSotIkTestPlugin_MAJOR_VERSION 0)
-set(OpenSotIkTestPlugin_MINOR_VERSION 1)
-set(OpenSotIkTestPlugin_PATCH_VERSION 0)
-set(OpenSotIkTestPlugin_VERSION ${OpenSotIkTestPlugin_MAJOR_VERSION}.${OpenSotIkTestPlugin_MINOR_VERSION}.${OpenSotIkTestPlugin_PATCH_VERSION})
-
-find_package(YCM REQUIRED)
-include(YCMDefaultDirs)
-ycm_default_dirs(${VARS_PREFIX})
-
-target_include_directories(OpenSotIkTestPlugin PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
-                                                "$<INSTALL_INTERFACE:${${VARS_PREFIX}_INSTALL_INCLUDEDIR}>")
-
-set_target_properties(OpenSotIkTestPlugin PROPERTIES VERSION ${${VARS_PREFIX}_VERSION}
-                                               SOVERSION ${${VARS_PREFIX}_VERSION})
-
-install(DIRECTORY include/
-        DESTINATION "${${VARS_PREFIX}_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING PATTERN "*.h*")
-
-install(TARGETS OpenSotIkTestPlugin
-        EXPORT OpenSotIkTestPlugin
-        ARCHIVE DESTINATION "${${VARS_PREFIX}_INSTALL_BINDIR}" COMPONENT lib
-        RUNTIME DESTINATION "${${VARS_PREFIX}_INSTALL_BINDIR}" COMPONENT bin
-        LIBRARY DESTINATION "${${VARS_PREFIX}_INSTALL_LIBDIR}" COMPONENT shlib)
-
-
-
-#enabling it will add all OpenSotIkTestPlugin dependencies as dependencies for third party users
-set_property(GLOBAL APPEND PROPERTY ${VARS_PREFIX}_TARGETS OpenSotIkTestPlugin)
-
-
-include(InstallBasicPackageFiles)
-install_basic_package_files(OpenSotIkTestPlugin VARS_PREFIX ${VARS_PREFIX}
-                                    VERSION ${${VARS_PREFIX}_VERSION}
-                                    COMPATIBILITY SameMajorVersion
-                                    TARGETS_PROPERTY ${VARS_PREFIX}_TARGETS
-                                    NO_CHECK_REQUIRED_COMPONENTS_MACRO)
 include(AddUninstallTarget)
