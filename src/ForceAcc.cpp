@@ -167,7 +167,7 @@ void XBotPlugin::ForceAccExample::on_start(double time)
 void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 {
     const bool enable_torque_ctrl = true;
-    const bool enable_feedback = true;
+    const bool enable_feedback = false;
     
     if(enable_feedback){
         
@@ -200,7 +200,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
         _logger->add(_contact_links[i] + "_wrench", _wrench_value[i]);
     }
     
-    Logger::info() << "Dyn feas: " << _dyn_feas->checkConstraint(_x).transpose() << Logger::endl();
+//     Logger::info() << "Dyn feas: " << _dyn_feas->checkConstraint(_x).transpose() << Logger::endl();
     
     /* Compute torques due to contacts */
     _tau_c.setZero(_model->getJointNum());
@@ -222,8 +222,8 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
     _model->getJointPosition(_q);
     _model->getJointVelocity(_qdot);
     
-//     _q.noalias() += 0.5*period*period*_qddot_value + period*_qdot;
-//     _qdot.noalias() += period*_qddot_value;
+    _q.noalias() += 0.5*period*period*_qddot_value + period*_qdot;
+    _qdot.noalias() += period*_qddot_value;
     
     _model->setJointPosition(_q);
     _model->setJointVelocity(_qdot);
