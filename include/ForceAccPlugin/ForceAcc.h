@@ -26,6 +26,7 @@
 #include <OpenSoT/constraints/acceleration/DynamicFeasibility.h>
 #include <OpenSoT/tasks/force/CoM.h>
 #include <OpenSoT/utils/AutoStack.h>
+#include <atomic>
 
 namespace XBotPlugin {
 
@@ -45,7 +46,7 @@ public:
     virtual void on_start(double time);
 
     virtual void on_stop(double time){}
-    
+
     virtual ~ForceAccExample(){}
 
 protected:
@@ -55,11 +56,11 @@ protected:
 private:
 
     void sync_model();
-    
+
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model;
     XBot::ImuSensor::ConstPtr _imu;
-    
+
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_vel;
 
@@ -75,15 +76,17 @@ private:
     std::vector<Eigen::VectorXd> _wrench_value;
     OpenSoT::AffineHelper _qddot;
     std::vector<OpenSoT::AffineHelper> _wrenches;
-    
+
     OpenSoT::tasks::acceleration::Cartesian::Ptr _waist_task;
     OpenSoT::tasks::force::CoM::Ptr _com_task;
     OpenSoT::tasks::acceleration::Postural::Ptr _postural_task;
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
-    
+
     OpenSoT::AutoStack::Ptr _autostack;
     OpenSoT::solvers::QPOases_sot::Ptr _solver;
+
+    std::atomic_int _impedance_coeff;
 
 };
 
