@@ -57,13 +57,13 @@ protected:
 private:
 
     void sync_model();
-    
+
     void callback(const std_msgs::Float64ConstPtr& msg)
     {
         int data = msg->data;
         data = data > 0 ? data : 0;
         data = data < 100 ? data : 100;
-        
+
         _impedance_coeff.store(data);
     }
 
@@ -76,7 +76,7 @@ private:
 
     double _start_time;
 
-    Eigen::VectorXd _q0, _k, _d;
+    Eigen::VectorXd _q0, _k0, _d0, _k, _d;
     Eigen::Vector3d _initial_com;
 
     XBot::MatLogger::Ptr _logger;
