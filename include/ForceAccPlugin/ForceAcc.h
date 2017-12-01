@@ -20,6 +20,7 @@
 #ifndef ForceAccExample_PLUGIN_H_
 #define ForceAccExample_PLUGIN_H_
 
+#include <std_msgs/Float64.h>
 #include <XCM/XBotControlPlugin.h>
 #include <OpenSoT/tasks/acceleration/Postural.h>
 #include <OpenSoT/tasks/acceleration/Cartesian.h>
@@ -56,6 +57,15 @@ protected:
 private:
 
     void sync_model();
+    
+    void callback(const std_msgs::Float64ConstPtr& msg)
+    {
+        int data = msg->data;
+        data = data > 0 ? data : 0;
+        data = data < 100 ? data : 100;
+        
+        _impedance_coeff.store(data);
+    }
 
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model;
@@ -87,6 +97,7 @@ private:
     OpenSoT::solvers::QPOases_sot::Ptr _solver;
 
     std::atomic_int _impedance_coeff;
+    XBot::RosUtils::SubscriberWrapper::Ptr _sub;
 
 };
 

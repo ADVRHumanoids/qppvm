@@ -30,6 +30,14 @@ const std::string floating_base_name = "pelvis";
 
 bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 {
+    
+    _sub = handle->getRosHandle()->subscribe("/force_acc/impedance_scaling", 
+                                             1, 
+                                             &ForceAccExample::callback, 
+                                             this);
+    
+    _impedance_coeff.store(100);
+    
     _robot = handle->getRobotInterface();
     _logger = XBot::MatLogger::getLogger("/tmp/opensot_force_acc_example");
 
@@ -261,8 +269,13 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
     /* Send commands to robot */
     if(enable_torque_ctrl){
-        _robot->setStiffness(_k);
-        _robot->setDamping(_d);
+        
+        double k_factor = _impedance_coeff.load() / 100.0;
+        double d_factor = std::sqrt(k_factor);
+        
+        _robot->setStiffness(_k * k_factor);
+        _robot->setDamping(_d * d_factor);
+        
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
     }
     else{
