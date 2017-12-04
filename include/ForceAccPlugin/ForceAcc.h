@@ -58,7 +58,7 @@ private:
 
     void sync_model();
 
-    void callback(const std_msgs::Float64ConstPtr& msg)
+    void callback_impedance(const std_msgs::Float64ConstPtr& msg)
     {
         int data = msg->data;
         data = data > 0 ? data : 0;
@@ -66,7 +66,17 @@ private:
 
         _impedance_coeff.store(data);
     }
+    
+    void callback_postural(const std_msgs::Float64ConstPtr& msg)
+    {
+        int data = msg->data;
+        data = data > 0 ? data : 0;
 
+        _postural_gain.store(data);
+    }
+
+    XBot::Handle::Ptr _xbot_handle;
+    
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model;
     XBot::ImuSensor::ConstPtr _imu;
@@ -95,9 +105,12 @@ private:
 
     OpenSoT::AutoStack::Ptr _autostack;
     OpenSoT::solvers::QPOases_sot::Ptr _solver;
+    
+    XBot::JointIdMap _q_ref_map, _qdot_ref_map;
+    Eigen::VectorXd _q_ref, _qdot_ref, _qddot_ref;
 
-    std::atomic_int _impedance_coeff;
-    XBot::RosUtils::SubscriberWrapper::Ptr _sub;
+    std::atomic_int _impedance_coeff, _postural_gain;
+    XBot::RosUtils::SubscriberWrapper::Ptr _sub_impedance, _sub_postural;
 
 };
 
