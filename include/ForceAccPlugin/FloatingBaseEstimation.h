@@ -29,14 +29,16 @@ namespace estimation {
         
     private:
         
+        typedef Eigen::Matrix<double, -1, -1, 0, 30, 3> LimitedSizeMatrix;
+        
         Eigen::Vector3d _qdot_est;
         Eigen::VectorXd _qdot, _q;
         Eigen::MatrixXd _Jtmp, _KJtmp;
         OpenSoT::utils::MatrixPiler _Jc;
         
-        Eigen::MatrixXd _A;
+        LimitedSizeMatrix _A;
         Eigen::VectorXd _b;
-        Eigen::ColPivHouseholderQR<Eigen::MatrixXd> _qr_solver;
+        Eigen::ColPivHouseholderQR<LimitedSizeMatrix> _qr_solver;
         
         XBot::ModelInterface::Ptr _model;
         XBot::ImuSensor::ConstPtr _imu;
