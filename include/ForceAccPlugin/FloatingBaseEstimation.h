@@ -34,6 +34,10 @@ namespace estimation {
         Eigen::MatrixXd _Jtmp;
         OpenSoT::utils::MatrixPiler _Jc;
         
+        Eigen::MatrixXd _A;
+        Eigen::VectorXd _b;
+        Eigen::ColPivHouseholderQR<Eigen::MatrixXd> _qr_solver;
+        
         XBot::ModelInterface::Ptr _model;
         XBot::ImuSensor::ConstPtr _imu;
         std::vector<std::string> _contact_links;
@@ -77,7 +81,11 @@ void estimation::FloatingBaseEstimator::update(double dt)
     _model->getJointVelocity(_qdot);
     _model->getJointPosition(_q);
     
-    _qdot_est = -(_Jc.generate_and_get().leftCols(3)).colPivHouseholderQr().solve(_Jc.generate_and_get().rightCols(na+3)*_qdot.tail(na+3));
+    _A = _Jc.generate_and_get().leftCols<3>();
+    _b.noalias() = -_Jc.generate_and_get().rightCols(na+3)*_qdot.tail(na+3);
+    _qr_solver.compute(_A);
+    
+    _qdot_est = _qr_solver.solve(_b);
     
     _qdot.head<3>() = _qdot_est;
     _q.head<3>() += _qdot_est * dt;
