@@ -32,15 +32,15 @@ const std::string floating_base_name = "pelvis";
 
 bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 {
-    
+
     _xbot_handle = handle;
 
-    _sub_impedance = handle->getRosHandle()->subscribe("/force_acc/impedance_scaling",
+    _sub_impedance = handle->getRosHandle()->subscribe("/gcomp/impedance_scaling",
                                              1,
                                              &ForceAccExample::callback_impedance,
                                              this);
-    
-    _sub_postural = handle->getRosHandle()->subscribe("/force_acc/postural_gain",
+
+    _sub_postural = handle->getRosHandle()->subscribe("/gcomp/postural_gain",
                                              1,
                                              &ForceAccExample::callback_postural,
                                              this);
@@ -91,7 +91,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _qddot = OpenSoT::AffineHelper::Zero(opt.getSize(), _model->getJointNum());
     OpenSoT::AffineHelper qddot_fb = _qddot.segment(0, 6);
     OpenSoT::AffineHelper x = OpenSoT::AffineHelper::Identity(opt.getSize());
-    
+
     auto qddot_fb_postural = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_qddot_fb", qddot_fb);
     auto minimize_all = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_x", x);
 
@@ -101,7 +101,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     std::vector<OpenSoT::constraints::GenericConstraint::Ptr> wrench_bounds;
     std::vector<OpenSoT::tasks::acceleration::Contact::Ptr> contact_tasks;
-    
+
     auto K = Eigen::MatrixXd::Identity(5,6);
 
     for(auto cl : _contact_links){
@@ -115,7 +115,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
                                                                         "world",
                                                                         _qddot)
                                  );
-        
+
         contact_tasks.push_back(
             boost::make_shared<OpenSoT::tasks::acceleration::Contact>(cl + "_contact",
                                                                         *_model,
@@ -135,7 +135,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     Eigen::VectorXd qddot_max;
     qddot_max.setConstant(_qddot.getOutputSize(), 5);
-    
+
     auto qddot_lims = boost::make_shared<OpenSoT::constraints::GenericConstraint>("qddot_limt", _qddot, qddot_max, -qddot_max);
 
 
@@ -145,7 +145,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _postural_task = boost::make_shared<OpenSoT::tasks::acceleration::Postural>("POSTURAL",
                                                                                 *_model,
                                                                                 _qddot);
-    
+
 
 
 
@@ -175,9 +175,9 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _autostack = boost::make_shared<OpenSoT::AutoStack>(minimize_all);
 //     _autostack = ((  _waist_task  ) / ( feet_cart_aggr  ) / ( _postural_task ));
 //     _autostack = _postural_task / feet_contact_aggr;
-    
-    _autostack << _dyn_feas 
-               << wrench_bounds[0] << wrench_bounds[1] << wrench_bounds[2] << wrench_bounds[3] 
+
+    _autostack << _dyn_feas
+               << wrench_bounds[0] << wrench_bounds[1] << wrench_bounds[2] << wrench_bounds[3]
 //                << qddot_lims;
                ;
 
@@ -203,7 +203,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
         _logger->add(_contact_links[i] + "_wrench", _wrench_value[i]);
     }
 
-    Logger::info(Logger::Severity::HIGH, "Version 1.0.1 \n");
+    Logger::info(Logger::Severity::HIGH, "Version 1.0.2 GCOMP \n");
 
     if(!_solver->solve(_x))
     {
@@ -222,7 +222,7 @@ void XBotPlugin::ForceAccExample::on_start(double time)
 //     _model->syncFrom_no_update(*_robot);
 //     _qdot.setZero(_q.size());
 //     _model->update();
-    
+
     _robot->getJointPosition(_q0);
 
     for(auto ct : _feet_cartesian)
@@ -252,16 +252,17 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
     /* Set reference*/
 //     _waist_task->setPositionReference(_initial_com - 0.1*Eigen::Vector3d::UnitZ());
-    
+
     _xbot_handle->getNrtPositionReference(_q_ref_map);
     _xbot_handle->getNrtVelocityReference(_qdot_ref_map);
     _robot->mapToEigen(_q_ref_map, _q_ref);
     _robot->mapToEigen(_qdot_ref_map, _qdot_ref);
     _qddot_ref = _qdot_ref * 0;
+    _qdot_ref = _qdot_ref * 0;
     _q_ref = _q0;
-    
+
     _postural_task->setLambda(_postural_gain.load());
-    _postural_task->setReference(_q_ref, _qdot_ref*0, _qddot_ref*0);
+    _postural_task->setReference(_q_ref, _qdot_ref, _qddot_ref);
 
     /* Update stack */
     _autostack->update(Eigen::VectorXd::Zero(0));
@@ -300,7 +301,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
     _model->setJointEffort(_tau);
 
     if(!enable_feedback){
-        
+
         /* Update model */
         _model->getJointPosition(_q);
         _model->getJointVelocity(_qdot);
@@ -347,7 +348,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
 void XBotPlugin::ForceAccExample::sync_model()
 {
-        _model->syncFrom(*_robot);
+        _model->syncFrom(*_robot, XBot::Sync::MotorSide, XBot::Sync::Position, XBot::Sync::Velocity);
 
         Eigen::Affine3d w_T_fb;
         Eigen::Matrix3d w_R_fb;
@@ -356,10 +357,10 @@ void XBotPlugin::ForceAccExample::sync_model()
 
         _sh_fb_pos.get(fb_pos);
         _sh_fb_vel.get(fb_vel);
-        
+
         fb_pos *= 0;
         fb_vel *= 0;
-        
+
         _imu->getAngularVelocity(fb_omega);
         _imu->getOrientation(w_R_fb);
 
