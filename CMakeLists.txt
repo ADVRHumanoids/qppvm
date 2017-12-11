@@ -47,6 +47,7 @@ include_directories(include
 ###########
 add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 add_library(ForceAccPlugin SHARED src/ForceAcc.cpp include)
+add_library(GcompPlugin SHARED src/GcompPlugin.cpp include)
 
 if ( Xenomai_FOUND )
 #     set_xeno_flags(QPPVMPlugin)
@@ -57,7 +58,7 @@ endif()
 ##########
 target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
 target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
-
+target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 
 
 #############
@@ -66,5 +67,6 @@ target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 
 ycm_library_install(QPPVMPlugin 1 0 0)
 ycm_library_install(ForceAccPlugin 1 0 0)
+ycm_library_install(GcompPlugin 1 0 0)
 
 include(AddUninstallTarget)
