@@ -31,7 +31,7 @@ namespace estimation {
         
         Eigen::Vector3d _qdot_est;
         Eigen::VectorXd _qdot, _q;
-        Eigen::MatrixXd _Jtmp;
+        Eigen::MatrixXd _Jtmp, _KJtmp;
         OpenSoT::utils::MatrixPiler _Jc;
         
         Eigen::MatrixXd _A;
@@ -73,7 +73,8 @@ void estimation::FloatingBaseEstimator::update(double dt)
     for(const auto& cl : _contact_links)
     {
           _model->getJacobian(cl, cl, _Jtmp);
-          _Jc.pile(_contact_matrix*_Jtmp);
+          _KJtmp = _contact_matrix*_Jtmp;
+          _Jc.pile(_KJtmp);
     }
     
     /* Solve for linear velocity */
