@@ -65,8 +65,8 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     
     _robot->getStiffness(_k);
     _robot->getDamping(_d);
-    _k /= 16;
-    _d /= 4;
+    _k *= 0;
+    _d *= 0;
     
     _imu = _robot->getImu().begin()->second;
     
@@ -307,8 +307,8 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
     
     /* Send commands to robot */
     if(enable_torque_ctrl){
-        _robot->setStiffness(_k*0);
-        _robot->setDamping(_d*0);
+        _robot->setStiffness(_k);
+        _robot->setDamping(_d);
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
     }
     else{
