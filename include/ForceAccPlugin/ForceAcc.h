@@ -27,6 +27,8 @@
 #include <OpenSoT/tasks/force/CoM.h>
 #include <OpenSoT/utils/AutoStack.h>
 
+#include <ForceAccPlugin/FloatingBaseEstimation.h>
+
 namespace XBotPlugin {
 
 /**
@@ -57,7 +59,7 @@ private:
     void sync_model();
     
     XBot::RobotInterface::Ptr _robot;
-    XBot::ModelInterface::Ptr _model;
+    XBot::ModelInterface::Ptr _model, _model_fbest;
     XBot::ImuSensor::ConstPtr _imu;
     
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
@@ -81,6 +83,8 @@ private:
     OpenSoT::tasks::acceleration::Postural::Ptr _postural_task;
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
+    
+    estimation::FloatingBaseEstimator::Ptr _fb_estimator;
     
     OpenSoT::AutoStack::Ptr _autostack;
     OpenSoT::solvers::QPOases_sot::Ptr _solver;
