@@ -73,7 +73,7 @@ void estimation::FloatingBaseEstimator::update(double dt)
     for(const auto& cl : _contact_links)
     {
           _model->getJacobian(cl, cl, _Jtmp);
-          _KJtmp = _contact_matrix*_Jtmp;
+          _KJtmp.noalias() = _contact_matrix*_Jtmp;
           _Jc.pile(_KJtmp);
     }
     
