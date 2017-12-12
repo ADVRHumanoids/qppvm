@@ -29,6 +29,8 @@
 
 #include <ForceAccPlugin/FloatingBaseEstimation.h>
 
+#include <std_msgs/Float64.h>
+
 namespace XBotPlugin {
 
 /**
@@ -55,8 +57,14 @@ protected:
     virtual void control_loop(double time, double period);
 
 private:
+    
+    void orientation_gain_callback(const std_msgs::Float64ConstPtr& msg);
+    void waist_gain_callback(const std_msgs::Float64ConstPtr& msg);
 
     void sync_model();
+    
+    XBot::RosUtils::SubscriberWrapper::Ptr _or_gain_sub, _waist_gain_sub;
+    std::atomic<double> _waist_or_gain, _waist_gain;
     
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model, _model_fbest;

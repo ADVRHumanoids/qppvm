@@ -32,6 +32,17 @@ std::string floating_base_name;
 bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 {
     
+    _waist_gain_sub = handle->getRosHandle()->subscribe("/force_acc/waist_gain", 
+                                                        1, 
+                                                        &ForceAccExample::waist_gain_callback, this);
+    
+    _or_gain_sub = handle->getRosHandle()->subscribe("/force_acc/waist_orientation_gain", 
+                                                     1, 
+                                                     &ForceAccExample::orientation_gain_callback, this);
+    
+    _waist_gain.store(4.0);
+    _waist_or_gain.store(0.1);
+    
     _robot = handle->getRobotInterface();
     
     /* Robot-specific params (TBD param server?) */
@@ -189,7 +200,8 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
                                                                         "world", 
                                                                         _qddot);
     
-    _waist_task->setLambda(25);
+    _waist_task->setLambda(_waist_gain.load());
+    _waist_task->setOrientationGain(_waist_or_gain.load());
                                  
     
     std::list<uint> pos_idx = {0,1,2};
@@ -249,6 +261,9 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
     if( (time - _start_time) <= 2.0 ){
         _waist_task->setPositionReference(_initial_com - 0.1*Eigen::Vector3d::UnitZ()*(time - _start_time));
     }
+    
+    _waist_task->setLambda(_waist_gain.load());
+    _waist_task->setOrientationGain(_waist_or_gain.load());
     
     /* Update stack */
     _autostack->update(Eigen::VectorXd::Zero(0));
@@ -330,5 +345,16 @@ void XBotPlugin::ForceAccExample::sync_model()
         _fb_estimator->update(0.001);
         _fb_estimator->log(_logger);
         
+}
+
+
+void XBotPlugin::ForceAccExample::orientation_gain_callback(const std_msgs::Float64ConstPtr& msg)
+{
+    _waist_or_gain.store(msg->data);
+}
+
+void XBotPlugin::ForceAccExample::waist_gain_callback(const std_msgs::Float64ConstPtr& msg)
+{
+    _waist_gain.store(msg->data);
 }
 
