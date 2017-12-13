@@ -40,8 +40,8 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
                                                      1,
                                                      &ForceAccExample::orientation_gain_callback, this);
 
-    _waist_gain.store(10.0);
-    _waist_or_gain.store(0.1);
+    _waist_gain.store(40.0);
+    _waist_or_gain.store(0.0);
 
     _robot = handle->getRobotInterface();
 
@@ -76,9 +76,8 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     _robot->getStiffness(_k);
     _robot->getDamping(_d);
-    _k *= 0;
-    _d *= 0;
-    
+    _k /= 10;
+    _d /= 3;
 
     _imu = _robot->getImu().begin()->second;
 
@@ -149,7 +148,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
         );
 
-        _feet_cartesian.back()->setLambda(1);
+        _feet_cartesian.back()->setLambda(0);
 
 
         wrench_bounds.push_back( boost::make_shared<OpenSoT::constraints::GenericConstraint>(cl+"_bound",
@@ -221,7 +220,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     _solver = boost::make_shared<OpenSoT::solvers::QPOases_sot>(_autostack->getStack(),
                                                                 _autostack->getBounds(),
-                                                                1e4);
+                                                                1);
 
 
     return true;
@@ -247,7 +246,7 @@ void XBotPlugin::ForceAccExample::on_start(double time)
 
 void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 {
-    period = 0.001;
+
 
     const bool enable_torque_ctrl = true;
     const bool enable_feedback = true;
@@ -341,7 +340,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
 void XBotPlugin::ForceAccExample::sync_model(double period)
 {
-        _model->syncFrom(*_robot);
+        _model->syncFrom(*_robot, XBot::Sync::All, XBot::Sync::MotorSide);
 
         _fb_estimator->update(period);
         _fb_estimator->log(_logger);
