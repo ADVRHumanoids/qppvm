@@ -39,12 +39,12 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _or_gain_sub = handle->getRosHandle()->subscribe("/force_acc/waist_orientation_gain",
                                                      1,
                                                      &ForceAccExample::orientation_gain_callback, this);
-    
+
     _impedance_gain_sub = handle->getRosHandle()->subscribe("/force_acc/impedance_gain",
                                                      1,
                                                      &ForceAccExample::impedance_gain_callback, this);
 
-    _waist_gain.store(25.0);
+    _waist_gain.store(10.0);
     _waist_or_gain.store(1.0);
     _impedance_gain.store(1.0);
 
@@ -92,9 +92,9 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     _fb_estimator = std::make_shared<estimation::FloatingBaseEstimator>(_model, _imu, _contact_links, contact_matrix);
 
-    Eigen::VectorXd qhome;
-    _model->getRobotState("home", qhome);
-    _model->setJointPosition(qhome);
+
+    _model->getRobotState("home", _qhome);
+    _model->setJointPosition(_qhome);
     _model->update();
 
     _model->initLog(_logger, 10000);
@@ -307,6 +307,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
     _model->setJointEffort(_tau);
 
     if( !enable_feedback ){
+
         /* Update model */
         _model->getJointPosition(_q);
         _model->getJointVelocity(_qdot);
@@ -324,6 +325,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
     _logger->add("tau_c", _tau_c);
     _logger->add("qddot_value", _qddot_value);
     _logger->add("x", _x);
+    _model->log(_logger, time);
 
     /* Send commands to robot */
     if(enable_torque_ctrl){
@@ -331,18 +333,20 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
         _d = _d0 * std::sqrt(_impedance_gain.load());
         _robot->setStiffness(_k);
         _robot->setDamping(_d);
+        _model->setJointPosition(_qhome);
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
+
     }
     else{
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
     }
 
-    _robot->move();
-    _model->log(_logger, time);
+    // _robot->move();
 
 
 
-    
+
+
 }
 
 
@@ -369,12 +373,12 @@ void XBotPlugin::ForceAccExample::waist_gain_callback(const std_msgs::Float64Con
 
 void XBotPlugin::ForceAccExample::impedance_gain_callback(const std_msgs::Float64ConstPtr& msg)
 {
-    
+
     double impedance_gain = msg->data;
     impedance_gain = std::min(impedance_gain, 1.0);
     impedance_gain = std::max(impedance_gain, 0.0);
-    
+
     Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", impedance_gain);
-    
+
     _impedance_gain.store(impedance_gain);
 }

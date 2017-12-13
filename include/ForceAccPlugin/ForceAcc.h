@@ -76,7 +76,7 @@ private:
 
     double _start_time;
 
-    Eigen::VectorXd _q0, _k, _d, _k0, _d0;
+    Eigen::VectorXd _q0, _k, _d, _k0, _d0, _qhome;
     Eigen::Vector3d _initial_com;
 
     XBot::MatLogger::Ptr _logger;
