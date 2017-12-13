@@ -65,6 +65,7 @@ private:
     void sync_model(double period);
 
     XBot::RosUtils::SubscriberWrapper::Ptr _or_gain_sub, _waist_gain_sub, _impedance_gain_sub;
+    XBot::RosUtils::PublisherWrapper::Ptr _zworld_pub, _twist_pub;
     std::atomic<double> _waist_or_gain, _waist_gain, _impedance_gain;
 
     XBot::RobotInterface::Ptr _robot;

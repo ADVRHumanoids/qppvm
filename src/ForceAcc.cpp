@@ -23,6 +23,9 @@
 #include <OpenSoT/constraints/GenericConstraint.h>
 #include <OpenSoT/tasks/acceleration/Contact.h>
 #include <OpenSoT/constraints/force/FrictionCone.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Vector3.h>
+#include <eigen_conversions/eigen_msg.h>
 
 /* Specify that the class XBotPlugin::ForceAccExample is a XBot RT plugin with name "ForceAccExample" */
 REGISTER_XBOT_PLUGIN_(XBotPlugin::ForceAccExample)
@@ -43,6 +46,10 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _impedance_gain_sub = handle->getRosHandle()->subscribe("/force_acc/impedance_gain",
                                                      1,
                                                      &ForceAccExample::impedance_gain_callback, this);
+    
+    _zworld_pub = handle->getRosHandle()->advertise<geometry_msgs::Vector3>("/force_acc/z_world", 1);
+    
+    _twist_pub = handle->getRosHandle()->advertise<geometry_msgs::Twist>("/force_acc/floating_base_twist", 1);
 
     _waist_gain.store(10.0);
     _waist_or_gain.store(1.0);
@@ -356,6 +363,27 @@ void XBotPlugin::ForceAccExample::sync_model(double period)
 
         _fb_estimator->update(period);
         _fb_estimator->log(_logger);
+        
+        Eigen::Vector6d twist;
+        Eigen::Vector3d zworld;
+        Eigen::Affine3d T;
+        
+        _model->getFloatingBaseTwist(twist);
+        _model->getFloatingBasePose(T);
+        
+        zworld = T.linear().col(2);
+        
+        geometry_msgs::Twist tf_twist;
+        geometry_msgs::Vector3 tf_zworld;
+        
+        tf::twistEigenToMsg(twist, tf_twist);
+        tf::vectorEigenToMsg(zworld, tf_zworld);
+        
+        _zworld_pub->pushToQueue(tf_zworld);
+        _twist_pub->pushToQueue(tf_twist);
+        
+        
+        
 
 }
 
