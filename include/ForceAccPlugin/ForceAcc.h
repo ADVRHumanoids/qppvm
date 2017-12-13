@@ -49,7 +49,7 @@ public:
     virtual void on_start(double time);
 
     virtual void on_stop(double time){}
-    
+
     virtual ~ForceAccExample(){}
 
 protected:
@@ -57,19 +57,19 @@ protected:
     virtual void control_loop(double time, double period);
 
 private:
-    
+
     void orientation_gain_callback(const std_msgs::Float64ConstPtr& msg);
     void waist_gain_callback(const std_msgs::Float64ConstPtr& msg);
 
-    void sync_model();
-    
+    void sync_model(double period);
+
     XBot::RosUtils::SubscriberWrapper::Ptr _or_gain_sub, _waist_gain_sub;
     std::atomic<double> _waist_or_gain, _waist_gain;
-    
+
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model, _model_fbest;
     XBot::ImuSensor::ConstPtr _imu;
-    
+
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_vel;
 
@@ -85,15 +85,15 @@ private:
     std::vector<Eigen::VectorXd> _wrench_value;
     OpenSoT::AffineHelper _qddot;
     std::vector<OpenSoT::AffineHelper> _wrenches;
-    
+
     OpenSoT::tasks::acceleration::Cartesian::Ptr _waist_task;
     OpenSoT::tasks::force::CoM::Ptr _com_task;
     OpenSoT::tasks::acceleration::Postural::Ptr _postural_task;
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
-    
+
     estimation::FloatingBaseEstimator::Ptr _fb_estimator;
-    
+
     OpenSoT::AutoStack::Ptr _autostack;
     OpenSoT::solvers::QPOases_sot::Ptr _solver;
 
