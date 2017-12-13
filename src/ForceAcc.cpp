@@ -39,9 +39,14 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _or_gain_sub = handle->getRosHandle()->subscribe("/force_acc/waist_orientation_gain",
                                                      1,
                                                      &ForceAccExample::orientation_gain_callback, this);
+    
+    _impedance_gain_sub = handle->getRosHandle()->subscribe("/force_acc/impedance_gain",
+                                                     1,
+                                                     &ForceAccExample::impedance_gain_callback, this);
 
-    _waist_gain.store(40.0);
-    _waist_or_gain.store(0.0);
+    _waist_gain.store(25.0);
+    _waist_or_gain.store(1.0);
+    _impedance_gain.store(1.0);
 
     _robot = handle->getRobotInterface();
 
@@ -74,10 +79,10 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     _logger = XBot::MatLogger::getLogger("/tmp/opensot_force_acc_example");
 
-    _robot->getStiffness(_k);
-    _robot->getDamping(_d);
-    _k /= 10;
-    _d /= 3;
+    _robot->getStiffness(_k0);
+    _robot->getDamping(_d0);
+    _k = _k0;
+    _d = _d0;
 
     _imu = _robot->getImu().begin()->second;
 
@@ -148,7 +153,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
         );
 
-        _feet_cartesian.back()->setLambda(0);
+        _feet_cartesian.back()->setLambda(1);
 
 
         wrench_bounds.push_back( boost::make_shared<OpenSoT::constraints::GenericConstraint>(cl+"_bound",
@@ -322,6 +327,8 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
     /* Send commands to robot */
     if(enable_torque_ctrl){
+        _k = _k0 * _impedance_gain.load();
+        _d = _d0 * std::sqrt(_impedance_gain.load());
         _robot->setStiffness(_k);
         _robot->setDamping(_d);
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
@@ -335,6 +342,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
 
 
+    
 }
 
 
@@ -358,3 +366,15 @@ void XBotPlugin::ForceAccExample::waist_gain_callback(const std_msgs::Float64Con
     _waist_gain.store(msg->data);
 }
 
+
+void XBotPlugin::ForceAccExample::impedance_gain_callback(const std_msgs::Float64ConstPtr& msg)
+{
+    
+    double impedance_gain = msg->data;
+    impedance_gain = std::min(impedance_gain, 1.0);
+    impedance_gain = std::max(impedance_gain, 0.0);
+    
+    Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", impedance_gain);
+    
+    _impedance_gain.store(impedance_gain);
+}

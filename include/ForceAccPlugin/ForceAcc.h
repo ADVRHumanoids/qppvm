@@ -60,11 +60,12 @@ private:
 
     void orientation_gain_callback(const std_msgs::Float64ConstPtr& msg);
     void waist_gain_callback(const std_msgs::Float64ConstPtr& msg);
+    void impedance_gain_callback(const std_msgs::Float64ConstPtr& msg);
 
     void sync_model(double period);
 
-    XBot::RosUtils::SubscriberWrapper::Ptr _or_gain_sub, _waist_gain_sub;
-    std::atomic<double> _waist_or_gain, _waist_gain;
+    XBot::RosUtils::SubscriberWrapper::Ptr _or_gain_sub, _waist_gain_sub, _impedance_gain_sub;
+    std::atomic<double> _waist_or_gain, _waist_gain, _impedance_gain;
 
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model, _model_fbest;
@@ -75,7 +76,7 @@ private:
 
     double _start_time;
 
-    Eigen::VectorXd _q0, _k, _d;
+    Eigen::VectorXd _q0, _k, _d, _k0, _d0;
     Eigen::Vector3d _initial_com;
 
     XBot::MatLogger::Ptr _logger;
