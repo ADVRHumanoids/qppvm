@@ -103,6 +103,8 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
     _model->getRobotState("home", _qhome);
     _model->setJointPosition(_qhome);
     _model->update();
+    
+    _robot->getRobotState("home", _qhome);
 
     _model->initLog(_logger, 10000);
 
@@ -259,7 +261,6 @@ void XBotPlugin::ForceAccExample::on_start(double time)
 void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 {
 
-
     const bool enable_torque_ctrl = true;
     const bool enable_feedback = true;
 
@@ -340,20 +341,17 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
         _d = _d0 * std::sqrt(_impedance_gain.load());
         _robot->setStiffness(_k);
         _robot->setDamping(_d);
-        _model->setJointPosition(_qhome);
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
+        _robot->setPositionReference(_qhome);
 
     }
     else{
         _robot->setReferenceFrom(*_model, XBot::Sync::Position, XBot::Sync::Effort);
     }
 
-    // _robot->move();
+    _robot->move();
 
-
-
-
-
+    
 }
 
 
