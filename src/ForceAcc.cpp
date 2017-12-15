@@ -47,11 +47,11 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
                                                      1,
                                                      &ForceAccExample::impedance_gain_callback, this);
     
-    _zworld_pub = handle->getRosHandle()->advertise<geometry_msgs::Vector3>("/force_acc/z_world", 1);
-    
-    _twist_pub = handle->getRosHandle()->advertise<geometry_msgs::Twist>("/force_acc/floating_base_twist", 1);
+//     _zworld_pub = handle->getRosHandle()->advertise<geometry_msgs::Vector3>("/force_acc/z_world", 1);
+//     
+//     _twist_pub = handle->getRosHandle()->advertise<geometry_msgs::Twist>("/force_acc/floating_base_twist", 1);
 
-    _waist_gain.store(10.0);
+    _waist_gain.store(25.0);
     _waist_or_gain.store(1.0);
     _impedance_gain.store(1.0);
 
@@ -272,7 +272,7 @@ void XBotPlugin::ForceAccExample::control_loop(double time, double period)
 
     /* Set reference*/
     if( (time - _start_time) <= 2.0 ){
-        // _waist_task->setPositionReference(_initial_com - 0.1*Eigen::Vector3d::UnitZ()*(time - _start_time));
+        _waist_task->setPositionReference(_initial_com - 0.1*Eigen::Vector3d::UnitZ()*(time - _start_time));
     }
 
     _waist_task->setLambda(_waist_gain.load());
@@ -362,23 +362,23 @@ void XBotPlugin::ForceAccExample::sync_model(double period)
         _fb_estimator->update(period);
         _fb_estimator->log(_logger);
         
-        Eigen::Vector6d twist;
-        Eigen::Vector3d zworld;
-        Eigen::Affine3d T;
-        
-        _model->getFloatingBaseTwist(twist);
-        _model->getFloatingBasePose(T);
-        
-        zworld = T.linear().col(2);
-        
-        geometry_msgs::Twist tf_twist;
-        geometry_msgs::Vector3 tf_zworld;
-        
-        tf::twistEigenToMsg(twist, tf_twist);
-        tf::vectorEigenToMsg(zworld, tf_zworld);
-        
-        _zworld_pub->pushToQueue(tf_zworld);
-        _twist_pub->pushToQueue(tf_twist);
+//         Eigen::Vector6d twist;
+//         Eigen::Vector3d zworld;
+//         Eigen::Affine3d T;
+//         
+//         _model->getFloatingBaseTwist(twist);
+//         _model->getFloatingBasePose(T);
+//         
+//         zworld = T.linear().col(2);
+//         
+//         geometry_msgs::Twist tf_twist;
+//         geometry_msgs::Vector3 tf_zworld;
+//         
+//         tf::twistEigenToMsg(twist, tf_twist);
+//         tf::vectorEigenToMsg(zworld, tf_zworld);
+//         
+//         _zworld_pub->pushToQueue(tf_zworld);
+//         _twist_pub->pushToQueue(tf_twist);
         
         
         
