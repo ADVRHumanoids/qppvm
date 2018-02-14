@@ -128,7 +128,9 @@ bool XBotPlugin::GcompPlugin::init_control_plugin(XBot::Handle::Ptr handle)
         wrench_bounds.push_back( boost::make_shared<OpenSoT::constraints::GenericConstraint>(cl+"_bound",
                                                                                              _wrenches.back(),
                                                                                              wrench_ub,
-                                                                                             wrench_lb)
+                                                                                             wrench_lb,
+                                                                                             OpenSoT::constraints::GenericConstraint::Type::CONSTRAINT
+                                                                                            )
                                );
 
     }
@@ -136,14 +138,14 @@ bool XBotPlugin::GcompPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     Eigen::VectorXd qddot_max;
     qddot_max.setConstant(_qddot.getOutputSize(), 5);
 
-    auto qddot_lims = boost::make_shared<OpenSoT::constraints::GenericConstraint>("qddot_limt", _qddot, qddot_max, -qddot_max);
+    auto qddot_lims = boost::make_shared<OpenSoT::constraints::GenericConstraint>("qddot_limt", _qddot, qddot_max, -qddot_max,
+                                                                                             OpenSoT::constraints::GenericConstraint::Type::CONSTRAINT);
 
 
 
     _com_task = boost::make_shared<OpenSoT::tasks::force::CoM>(_wrenches, _contact_links, *_model);
 
-    _postural_task = boost::make_shared<OpenSoT::tasks::acceleration::Postural>("POSTURAL",
-                                                                                *_model,
+    _postural_task = boost::make_shared<OpenSoT::tasks::acceleration::Postural>(*_model,
                                                                                 _qddot);
 
 
