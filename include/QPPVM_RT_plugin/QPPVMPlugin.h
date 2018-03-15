@@ -28,7 +28,7 @@
 #include <OpenSoT/constraints/torque/JointLimits.h>
 #include <OpenSoT/utils/AutoStack.h>
 #include <OpenSoT/SubTask.h>
-
+#include <geometry_msgs/Twist.h>
 
 #include <XBotInterface/Logger.hpp>
 
@@ -48,6 +48,13 @@ namespace demo {
     protected:
 
     private:
+      
+        typedef OpenSoT::tasks::torque::CartesianImpedanceCtrl CartesianImpedanceTask;
+        
+        void cart_stiffness_callback(const geometry_msgs::TwistConstPtr& msg, int id);
+        void cart_damping_callback(const geometry_msgs::TwistConstPtr& msg, int id);
+        
+        std::vector<XBot::RosUtils::SubscriberWrapper::Ptr> _cart_stiffness_sub, _cart_damping_sub;
 
         double _start_time;
         
@@ -65,8 +72,7 @@ namespace demo {
 
         OpenSoT::constraints::torque::TorqueLimits::Ptr _torque_limits;
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
-        OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _ee_task_right, _ee_task_left;
-        OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _elbow_task_right, _elbow_task_left;
+        std::vector<CartesianImpedanceTask::Ptr> _leg_impedance_task;
         OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
 
         OpenSoT::AutoStack::Ptr _autostack;
@@ -90,6 +96,8 @@ namespace demo {
 
         Eigen::VectorXd _q_max;
         Eigen::VectorXd _q_min;
+        
+        Eigen::MatrixXd _Kc, _Dc;
 
         bool _homing_done;
 
@@ -107,3 +115,7 @@ namespace demo {
 
 }
 #endif
+
+
+
+
