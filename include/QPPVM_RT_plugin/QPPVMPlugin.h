@@ -48,18 +48,18 @@ namespace demo {
     protected:
 
     private:
-      
+
         typedef OpenSoT::tasks::torque::CartesianImpedanceCtrl CartesianImpedanceTask;
-        
+
         void cart_stiffness_callback(const geometry_msgs::TwistConstPtr& msg, int id);
         void cart_damping_callback(const geometry_msgs::TwistConstPtr& msg, int id);
-        
+
         std::vector<XBot::RosUtils::SubscriberWrapper::Ptr> _cart_stiffness_sub, _cart_damping_sub;
 
         double _start_time;
-        
+
         bool _set_ref;
-        
+
         void syncFromMotorSide(XBot::RobotInterface::Ptr robot, XBot::ModelInterface::Ptr model);
         XBot::JointIdMap _jidmap;
 
@@ -86,7 +86,7 @@ namespace demo {
         Eigen::VectorXd _k;
         Eigen::VectorXd _d;
 
-        Eigen::VectorXd _tau_d;
+        Eigen::VectorXd _tau_d, _tau_offset;
         Eigen::VectorXd _h;
 
         Eigen::VectorXd _tau_max;
@@ -96,16 +96,16 @@ namespace demo {
 
         Eigen::VectorXd _q_max;
         Eigen::VectorXd _q_min;
-        
+
         Eigen::MatrixXd _Kc, _Dc;
 
         bool _homing_done;
 
         double _homing_time;
-        
+
         KDL::Frame _start_pose;
         KDL::Frame _ref;
-        
+
 
         void sense();
 
