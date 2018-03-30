@@ -21,7 +21,8 @@
 #define __QPPVM_PLUGIN_H__
 
 #include <XCM/XBotControlPlugin.h>
-#include <OpenSoT/solvers/QPOases.h>
+#include <OpenSoT/solvers/iHQP.h>
+#include <OpenSoT/solvers/BackEndFactory.h>
 #include <OpenSoT/tasks/torque/CartesianImpedanceCtrl.h>
 #include <OpenSoT/tasks/torque/JointImpedanceCtrl.h>
 #include <OpenSoT/constraints/torque/TorqueLimits.h>
@@ -29,6 +30,7 @@
 #include <OpenSoT/utils/AutoStack.h>
 #include <OpenSoT/SubTask.h>
 #include <geometry_msgs/Twist.h>
+#include <OpenSoT/tasks/force/CoM.h>
 
 #include <XBotInterface/Logger.hpp>
 
@@ -68,12 +70,13 @@ namespace demo {
 
         XBot::MatLogger::Ptr _matlogger;
 
-        OpenSoT::solvers::QPOases_sot::Ptr _solver;
+        OpenSoT::solvers::iHQP::Ptr _solver;
 
         OpenSoT::constraints::torque::TorqueLimits::Ptr _torque_limits;
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
         std::vector<CartesianImpedanceTask::Ptr> _leg_impedance_task;
         OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
+        CartesianImpedanceTask::Ptr _waist;
 
         OpenSoT::AutoStack::Ptr _autostack;
 
@@ -106,6 +109,16 @@ namespace demo {
         KDL::Frame _start_pose;
         KDL::Frame _ref;
 
+
+        XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
+        XBot::SharedObject<Eigen::Quaterniond> _sh_fb_rot;
+        XBot::SharedObject<Eigen::Vector6d> _sh_fb_vel;
+
+
+         Eigen::VectorXd tau_f1;
+         Eigen::VectorXd tau_f2;
+         Eigen::VectorXd tau_f3;
+         Eigen::VectorXd tau_f4;
 
         void sense();
 
