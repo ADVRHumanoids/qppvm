@@ -76,7 +76,7 @@ namespace demo {
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
         std::vector<CartesianImpedanceTask::Ptr> _leg_impedance_task;
         OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
-        CartesianImpedanceTask::Ptr _waist;
+        CartesianImpedanceTask::Ptr _waist,_ee_task_left,_ee_task_right;
 
         OpenSoT::AutoStack::Ptr _autostack;
 
@@ -119,6 +119,8 @@ namespace demo {
          Eigen::VectorXd tau_f2;
          Eigen::VectorXd tau_f3;
          Eigen::VectorXd tau_f4;
+         
+         Eigen::Vector3d com0;
 
         void sense();
 

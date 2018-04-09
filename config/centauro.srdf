@@ -17,8 +17,18 @@
    <group name="rear_left_leg">
       <chain base_link="pelvis" tip_link="wheel_3"/>
    </group>
+   
+   <group name="left_arm">
+      <chain base_link="torso_2" tip_link="arm1_7"/>
+    </group>
+    
+    <group name="right_arm">
+        <chain base_link="torso_2" tip_link="arm2_7"/>
+    </group>
 
     <group name="arms">
+    <group name="left_arm"/> 
+        <group name="right_arm"/>
     </group>
 
     <group name="hands">
