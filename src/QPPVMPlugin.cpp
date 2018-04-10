@@ -54,12 +54,13 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
+    XBot::Logger::SetVerbosityLevel(XBot::Logger::Severity::LOW);
 
     _set_ref = false;
 
     _robot = handle->getRobotInterface();
-    _model = XBot::ModelInterface::getModel("external/qppvm/config/floating_base/centauro_simple_example.yaml");
-//     _model = XBot::ModelInterface::getModel("/home/matteo/advr-superbuild/configs/ADVR_shared/user_example/centauro_simple_example.yaml");
+//    _model = XBot::ModelInterface::getModel("external/qppvm/config/floating_base/centauro_simple_example.yaml");
+     _model = XBot::ModelInterface::getModel("configs/ADVR_shared/user_example/centauro_simple_example.yaml");
 
     for(int i = 0; i < _robot->legs(); i++)
     {
@@ -98,6 +99,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
     _model->computeNonlinearTerm(_h);
 
+    _h.segment(0,6) = Eigen::Vector6d::Zero(); ///REMOVE LATER!
     _tau_max = _tau_max_const - _h;
     _tau_min = _tau_min_const - _h;
 
@@ -109,26 +111,24 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _model->update();
 
 
-    _model->getRobotState("torque_offset", _tau_offset);
+//    _model->getRobotState("torque_offset", _tau_offset);
 
-    std::cout << _tau_offset << std::endl;
+//    std::cout << _tau_offset << std::endl;
 
     _q = _q_home;
     _q_ref = _q;
 
     _k.setZero(_robot->getJointNum());
     _d.setZero(_robot->getJointNum());
+    _robot->getStiffness(_k);
+    _robot->getDamping(_d);
 
-    Eigen::VectorXd k0, d0;
-    _robot->getStiffness(k0);
-    _robot->getDamping(d0);
-
-    Eigen::VectorXd _k_matrix;
-    Eigen::VectorXd _d_matrix;
-
-    double k = 100.;
-    _k_matrix = Eigen::VectorXd(_k_matrix.size()).setConstant(k);
-    _d_matrix = Eigen::VectorXd(_d_matrix.size()).setConstant(10.);
+    Eigen::VectorXd _k_matrix(_model->getJointNum());
+    Eigen::VectorXd _d_matrix(_model->getJointNum());
+    _k_matrix.setZero(_k_matrix.size());
+    _d_matrix.setZero(_d_matrix.size());
+    _k_matrix.segment(6,_robot->getJointNum()) = _k;
+    _d_matrix.segment(6,_robot->getJointNum()) = 0.1*_d;
 
 
     std::cout<<"_d_matrix: \n"<<_d_matrix.transpose()<<std::endl;
@@ -136,6 +136,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
     /* Create torque limit constraint */
     _torque_limits = boost::make_shared<TorqueLimits>(_tau_max, _tau_min);
+    std::cout<<"tau_max: "<<_tau_max.transpose()<<std::endl;
+    std::cout<<"tau_min: "<<_tau_min.transpose()<<std::endl;
 
 
     /* Create torque joint impedance task */
@@ -153,14 +155,14 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                     _q,
                                                                    *_model,
                                                                    _robot->leg(i).getTipLinkName(),
-                                                                   "world",
+                                                                   "pelvis",
                                                                    OpenSoT::Indices::range(0,2)
                                                                    );
 
         _leg_impedance_task.push_back(imp_task);
 
-        _Kc.setIdentity(6,6); _Kc = 3000.*_Kc;
-        _Dc.setIdentity(6,6); _Dc = 30.*_Dc;
+        _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+        _Dc.setIdentity(6,6); _Dc = 5.*_Dc;
 
         imp_task->setStiffnessDamping(_Kc, _Dc);
         imp_task->useInertiaMatrix(true);
@@ -198,12 +200,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                _q,
                                                               *_model,
                                                               "arm1_7",
-                                                              "world",
+                                                              "pelvis",
                                                                OpenSoT::Indices::range(0,2)
                                                               );
     
-    _Kc.setIdentity(6,6); _Kc = 700.*_Kc;
-    _Dc.setIdentity(6,6); _Dc = 70.*_Dc;
+    _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+    _Dc.setIdentity(6,6); _Dc = 5.*_Dc;
     
     _ee_task_left->setStiffnessDamping(_Kc, _Dc);
     _ee_task_left->useInertiaMatrix(true);
@@ -213,12 +215,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                 _q,
                                                                 *_model,
                                                                 "arm2_7",
-                                                                "world",
+                                                                "pelvis",
                                                                  OpenSoT::Indices::range(0,2)
                                                                 );
     
-    _Kc.setIdentity(6,6); _Kc = 100.*_Kc;
-    _Dc.setIdentity(6,6); _Dc = 7.*_Dc;
+    _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+    _Dc.setIdentity(6,6); _Dc = 5.*_Dc;
     
     _ee_task_right->setStiffnessDamping(_Kc, _Dc);
     _ee_task_right->useInertiaMatrix(true);
@@ -230,11 +232,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 //     _autostack =  ( (legs_impedance_aggr + ee_impedance_aggr) / ( _joint_task) ) << _torque_limits;
     
-//     _autostack =  ( legs_impedance_aggr / ee_impedance_aggr /  _joint_task ) << _torque_limits;
+     _autostack =  ( legs_impedance_aggr / ee_impedance_aggr /  _joint_task ) << _torque_limits;
         
 //    _autostack =  ( legs_impedance_aggr /  _joint_task ) << _torque_limits;
-     _autostack.reset(new  OpenSoT::AutoStack(_joint_task));
-     _autostack<<_torque_limits;
+
+//     _autostack.reset(new  OpenSoT::AutoStack(_joint_task));
+//     _autostack<<_torque_limits;
 
 
     _solver = boost::make_shared<iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
@@ -249,25 +252,28 @@ void QPPVMPlugin::QPPVMControl(const double time)
 {
 //     _tau_max = _tau_max_const - _h +(tau_f1 + tau_f2 + tau_f3 + tau_f4);
 //     _tau_min = _tau_min_const - _h +(tau_f1 + tau_f2 + tau_f3 + tau_f4);
-//     _tau_max = _tau_max_const - _h;
-//     _tau_min = _tau_min_const - _h;
-//     _torque_limits->setTorqueLimits(_tau_max, _tau_min);
-// 
-//     _autostack->update(_q);
-// 
-//     if(!_solver->solve(_tau_d)){
-//         _tau_d.setZero(_tau_d.size());
-//         XBot::Logger::error("Unable to solve \n");
-//     }
-// 
-//     _solver->log(_matlogger);
-// 
-//     _matlogger->add("tau_qp", _tau_d);
+    _h.segment(0,6) = Eigen::Vector6d::Zero(); ///REMOVE LATER!
+     _tau_max = _tau_max_const - _h;
+     _tau_min = _tau_min_const - _h;
+     _torque_limits->setTorqueLimits(_tau_max, _tau_min);
+
+
+     _autostack->update(_q);
+     _autostack->log(_matlogger);
+
+     if(!_solver->solve(_tau_d)){
+         _tau_d.setZero(_tau_d.size());
+         XBot::Logger::error("Unable to solve \n");
+     }
+
+     _solver->log(_matlogger);
+
+     _matlogger->add("tau_qp", _tau_d);
     
     _matlogger->add("h", _h);
 
-//     _tau_d = _tau_d + _h;
-    _tau_d = _h;
+     _tau_d = _tau_d + _h;
+//    _tau_d = _h;
 
      _matlogger->add("tau_desired", _tau_d);
 }
@@ -275,40 +281,45 @@ void QPPVMPlugin::QPPVMControl(const double time)
 void QPPVMPlugin::on_start(double time)
 {
     sense();
-    _robot->move();
-    
+
     _start_time = time;
     
 
-//     for(auto task : _leg_impedance_task)
-//     {
-//         Eigen::Affine3d task_pose;
-//         _model->getPose(task->getDistalLink(), task->getBaseLink(), task_pose);
-// 
-//         task->setReference(task_pose.matrix());
-//     }
-//     
-//     
-//     Eigen::Affine3d left_ee_pose;
-//     _model->getPose(_ee_task_left->getDistalLink(), _ee_task_left->getBaseLink(), left_ee_pose);
-//     
-//     Eigen::Affine3d right_ee_pose;
-//     _model->getPose(_ee_task_right->getDistalLink(),_ee_task_right->getBaseLink(), right_ee_pose);
-//     
-//     _ee_task_left->setReference(left_ee_pose.matrix());
-//     _ee_task_right->setReference(right_ee_pose.matrix());
-//     
-//     
-//     Eigen::Affine3d task_pose;
-//     _model->getPose("pelvis", task_pose);
-//     _waist->setReference(task_pose.matrix());
-// 
-// 
-//     _joint_task->setReference(_q);
-// 
-//     _autostack->update(_q);
-//     
-//     _model->getCOM(com0);
+     for(auto task : _leg_impedance_task)
+     {
+         Eigen::Affine3d task_pose;
+         _model->getPose(task->getDistalLink(), task->getBaseLink(), task_pose);
+
+         task->setReference(task_pose.matrix());
+     }
+
+
+     Eigen::Affine3d left_ee_pose;
+     _model->getPose(_ee_task_left->getDistalLink(), _ee_task_left->getBaseLink(), left_ee_pose);
+
+     Eigen::Affine3d right_ee_pose;
+     _model->getPose(_ee_task_right->getDistalLink(),_ee_task_right->getBaseLink(), right_ee_pose);
+
+     _ee_task_left->setReference(left_ee_pose.matrix());
+     _ee_task_right->setReference(right_ee_pose.matrix());
+
+
+     Eigen::Affine3d task_pose;
+     _model->getPose("pelvis", task_pose);
+     _waist->setReference(task_pose.matrix());
+
+
+     _joint_task->setReference(_q);
+
+     _h.segment(0,6) = Eigen::Vector6d::Zero(); ///REMOVE LATER!
+     _tau_max = _tau_max_const - _h;
+     _tau_min = _tau_min_const - _h;
+     _torque_limits->setTorqueLimits(_tau_max, _tau_min);
+
+
+     _autostack->update(_q);
+
+     _model->getCOM(com0);
     
 
 }
@@ -424,23 +435,23 @@ void QPPVMPlugin::control_loop(double time, double period)
 
 void QPPVMPlugin::sense()
 {
-//     Eigen::Affine3d w_T_fb;
-//     Eigen::Vector6d fb_twist;
-// 
-//     w_T_fb.translation() = _sh_fb_pos.get();
-//     w_T_fb.linear() = _sh_fb_rot.get().toRotationMatrix();
-//     fb_twist = _sh_fb_vel.get();
-// 
-// 
-//     _model->setFloatingBaseState(w_T_fb, fb_twist);
-//     _model->update();
+     Eigen::Affine3d w_T_fb;
+     Eigen::Vector6d fb_twist;
+
+     w_T_fb.translation() = _sh_fb_pos.get();
+     w_T_fb.linear() = _sh_fb_rot.get().toRotationMatrix();
+     fb_twist = _sh_fb_vel.get();
+
+
+     _model->setFloatingBaseState(w_T_fb, fb_twist);
+     _model->update();
 
 
     _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::Velocity, XBot::Sync::MotorSide);
     _model->getJointPosition(_q);
     _model->getJointVelocity(_dq);
-//     _model->computeNonlinearTerm(_h);
-    _model->computeGravityCompensation(_h);
+    _model->computeNonlinearTerm(_h);
+//    _model->computeGravityCompensation(_h);
 }
 
 
