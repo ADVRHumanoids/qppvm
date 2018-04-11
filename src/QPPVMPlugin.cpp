@@ -63,7 +63,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
     _robot = handle->getRobotInterface();
 //    _model = XBot::ModelInterface::getModel("external/qppvm/config/floating_base/centauro_simple_example.yaml");
-     _model = XBot::ModelInterface::getModel("configs/ADVR_shared/user_example/centauro_simple_example.yaml");
+//     _model = XBot::ModelInterface::getModel("configs/ADVR_shared/user_example/centauro_simple_example.yaml");
+    _model = XBot::ModelInterface::getModel(handle->getPathToConfigFile());
 
     for(int i = 0; i < _robot->legs(); i++)
     {
@@ -129,8 +130,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     Eigen::VectorXd _d_matrix(_model->getJointNum());
     _k_matrix.setZero(_k_matrix.size());
     _d_matrix.setZero(_d_matrix.size());
-    _k_matrix.segment(6,_robot->getJointNum()) = 0.1*_k;
-    _d_matrix.segment(6,_robot->getJointNum()) = 0.1*_d;
+    _k_matrix.segment(6,_robot->getJointNum()) = 0.001*_k;//0.1*_k;
+    _d_matrix.segment(6,_robot->getJointNum()) = 0.01*_d;//0.1*_d;
 
 
     std::cout<<"_d_matrix: \n"<<_d_matrix.transpose()<<std::endl;
@@ -178,7 +179,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _waist = boost::make_shared<CartesianImpedanceTask>("WAIST_CART_IMP",
                                                             _q,
                                                            *_model,
-                                                           "pelvis",
+                                                           "Waist",
                                                            "world");
     Eigen::MatrixXd _Kw(6,6); _Kw.setIdentity(6,6);
     Eigen::MatrixXd _Dw(6,6); _Dw.setIdentity(6,6);
@@ -205,7 +206,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _ee_task_left = boost::make_shared<CartesianImpedanceTask>("LEFT_ARM",
                                                                _q,
                                                               *_model,
-                                                              "arm1_7",
+                                                              _robot->chain("left_arm").getTipLinkName(),
                                                               "world",
                                                                OpenSoT::Indices::range(0,2)
                                                               );
@@ -220,7 +221,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _ee_task_right = boost::make_shared<CartesianImpedanceTask>("RIGHT_ARM",
                                                                 _q,
                                                                 *_model,
-                                                                "arm2_7",
+                                                                _robot->chain("right_arm").getTipLinkName(),
                                                                 "world",
                                                                  OpenSoT::Indices::range(0,2)
                                                                 );
@@ -233,7 +234,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     
 
 
-    auto legs_impedance_aggr = _leg_impedance_task[0] + _leg_impedance_task[1] + _leg_impedance_task[2] + _leg_impedance_task[3];
+    auto legs_impedance_aggr = _leg_impedance_task[0] + _leg_impedance_task[1];// + _leg_impedance_task[2] + _leg_impedance_task[3];
     auto ee_impedance_aggr = _ee_task_left +  _ee_task_right;
 
 //     _autostack =  ( (legs_impedance_aggr + ee_impedance_aggr) / ( _joint_task) ) << _torque_limits;
@@ -308,7 +309,7 @@ void QPPVMPlugin::on_start(double time)
 
 
      Eigen::Affine3d task_pose;
-     _model->getPose("pelvis", task_pose);
+     _model->getPose("Waist", task_pose);
      _waist->setReference(task_pose.matrix());
 
 
@@ -340,7 +341,7 @@ void QPPVMPlugin::control_loop(double time, double period)
 
     _matlogger->add("tau_opt", tau_opt);
     
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < _robot->legs(); i++)
     {
         _matlogger->add("wrench_opt_" + std::to_string(i+1), Fopt[i]);
     }
@@ -349,8 +350,7 @@ void QPPVMPlugin::control_loop(double time, double period)
     
 
     _robot->setReferenceFrom(*_model, XBot::Sync::Effort, XBot::Sync::Impedance);
-     _robot->setEffortReference(tau_opt.tail(42));
-//     _robot->setEffortReference(_tau_d.tail(42));
+     _robot->setEffortReference(tau_opt.tail(_model->getActuatedJointNum()));
 
 
     _matlogger->add("time_matlogger", time);

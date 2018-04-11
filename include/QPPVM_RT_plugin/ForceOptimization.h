@@ -142,7 +142,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     _contact_links(contact_links)
 {
     /* Do we want to consider contact torques? */
-    const bool optimize_contact_torque = false;
+    const bool optimize_contact_torque = true;
     
     /* Define optimization vector by stacking all contact wrenches */
     OpenSoT::OptvarHelper::VariableVector vars;
