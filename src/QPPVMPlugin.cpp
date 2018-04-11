@@ -20,7 +20,7 @@
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
 #include <qpOASES.hpp>
 #include <boost/make_shared.hpp>
-
+#include <QPPVM_RT_plugin/ForceOptimization.h>
 #include <OpenSoT/constraints/force/WrenchLimits.h>
 
 #define TRJ_TIME 3.0
@@ -48,7 +48,10 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _sh_fb_pos = handle->getSharedMemory()->getSharedObject<Eigen::Vector3d>("/gazebo/floating_base_position");
     _sh_fb_rot = handle->getSharedMemory()->getSharedObject<Eigen::Quaterniond>("/gazebo/floating_base_orientation");
     _sh_fb_vel = handle->getSharedMemory()->getSharedObject<Eigen::Vector6d>("/gazebo/floating_base_velocity");
-
+    
+    _sh_fb_pos.set(Eigen::Vector3d::Zero());
+    _sh_fb_rot.set(Eigen::Quaterniond::Identity());
+    _sh_fb_vel.set(Eigen::Vector6d::Zero());
 
 
 
@@ -126,7 +129,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     Eigen::VectorXd _d_matrix(_model->getJointNum());
     _k_matrix.setZero(_k_matrix.size());
     _d_matrix.setZero(_d_matrix.size());
-    _k_matrix.segment(6,_robot->getJointNum()) = _k;
+    _k_matrix.segment(6,_robot->getJointNum()) = 0.1*_k;
     _d_matrix.segment(6,_robot->getJointNum()) = 0.1*_d;
 
 
@@ -146,6 +149,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _joint_task->setDamping(_d_matrix.asDiagonal());
     _joint_task->useInertiaMatrix(true);
     _joint_task->update(_q);
+    
+    std::vector<std::string> links_in_contact;
 
     /* Create leg impedance tasks */
     for(int i = 0; i < _robot->legs(); i++)
@@ -159,9 +164,11 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                    );
 
         _leg_impedance_task.push_back(imp_task);
+        
+        links_in_contact.push_back(_robot->leg(i).getTipLinkName());
 
         _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
-        _Dc.setIdentity(6,6); _Dc = 5.*_Dc;
+        _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
 
         imp_task->setStiffnessDamping(_Kc, _Dc);
         imp_task->useInertiaMatrix(true);
@@ -185,12 +192,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _Kw(4,4) = 0.5*k_waist;
     _Kw(5,5) = 0.5*k_waist;
 
-    _Dw(0,0) = 5.;
-    _Dw(1,1) = 5.;
-    _Dw(2,2) = 5.;
-    _Dw(3,3) = 5.;
-    _Dw(4,4) = 5.;
-    _Dw(5,5) = 5.;
+    _Dw(0,0) = 200.;
+    _Dw(1,1) = 200.;
+    _Dw(2,2) = 200.;
+    _Dw(3,3) = 50.;
+    _Dw(4,4) = 50.;
+    _Dw(5,5) = 50.;
 
     _waist->setStiffnessDamping(_Kw, _Dw);
       
@@ -204,7 +211,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                               );
     
     _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
-    _Dc.setIdentity(6,6); _Dc = 5.*_Dc;
+    _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
     
     _ee_task_left->setStiffnessDamping(_Kc, _Dc);
     _ee_task_left->useInertiaMatrix(true);
@@ -219,7 +226,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                 );
     
     _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
-    _Dc.setIdentity(6,6); _Dc = 5.*_Dc;
+    _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
     
     _ee_task_right->setStiffnessDamping(_Kc, _Dc);
     _ee_task_right->useInertiaMatrix(true);
@@ -243,6 +250,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _solver->log(_matlogger);
 
 
+    _force_opt = boost::make_shared<ForceOptimization>(_model, links_in_contact);
 
     return true;
 }
@@ -322,57 +330,28 @@ void QPPVMPlugin::control_loop(double time, double period)
 {
 
     sense();
-
-
-
-     Eigen::MatrixXd J1(0,0);
-     _model->getJacobian("wheel_1",J1);
-     tau_f1.resize(_q.size());
-
-     Eigen::MatrixXd J2(0,0);
-     _model->getJacobian("wheel_2",J2);
-     tau_f2.resize(_q.size());
-
-     Eigen::MatrixXd J3(0,0);
-     _model->getJacobian("wheel_3",J3);
-     tau_f3.resize(_q.size());
-
-
-     Eigen::MatrixXd J4(0,0);
-     _model->getJacobian("wheel_4",J4);
-     tau_f4.resize(_q.size());
-
-     _matlogger->add("Jc1", J1);
-     _matlogger->add("Jc2", J2);
-     _matlogger->add("Jc3", J3);
-     _matlogger->add("Jc4", J4);
-
-
-
+    
     QPPVMControl(time);
 
+    std::vector<Eigen::Vector6d> Fopt;
+    Eigen::VectorXd tau_opt;
+    
+    _force_opt->compute(_tau_d, Fopt, tau_opt);
 
-    Eigen::MatrixXd S(48,42);
-    S<<Eigen::MatrixXd::Zero(6,42),
-       Eigen::MatrixXd::Identity(42,42);
-    Eigen::MatrixXd J(12,48);
-    J<<J1.topRows(3),
-       J2.topRows(3),
-       J3.topRows(3),
-       J4.topRows(3);
-    Eigen::MatrixXd A(48, 42+12);
-    A<<S, J.transpose();
-
-    Eigen::VectorXd tauf_d = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(_tau_d);
-
-    _matlogger->add("F", tauf_d.tail(12));
-
-
-
-
+    _matlogger->add("tau_opt", tau_opt);
+    
+    for(int i = 0; i < 4; i++)
+    {
+        _matlogger->add("wrench_opt_" + std::to_string(i+1), Fopt[i]);
+    }
+    
+    _force_opt->log(_matlogger);
+    
 
     _robot->setReferenceFrom(*_model, XBot::Sync::Effort, XBot::Sync::Impedance);
-    _robot->setEffortReference(tauf_d.head(42));
+     _robot->setEffortReference(tau_opt.tail(42));
+//     _robot->setEffortReference(_tau_d.tail(42));
+
 
     _matlogger->add("time_matlogger", time);
 

@@ -31,6 +31,7 @@
 #include <OpenSoT/SubTask.h>
 #include <geometry_msgs/Twist.h>
 #include <OpenSoT/tasks/force/CoM.h>
+#include <QPPVM_RT_plugin/ForceOptimization.h>
 
 #include <XBotInterface/Logger.hpp>
 
@@ -121,6 +122,8 @@ namespace demo {
          Eigen::VectorXd tau_f4;
          
          Eigen::Vector3d com0;
+         
+         ForceOptimization::Ptr _force_opt;
 
         void sense();
 
