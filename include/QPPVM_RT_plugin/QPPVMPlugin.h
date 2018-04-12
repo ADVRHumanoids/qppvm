@@ -32,6 +32,7 @@
 #include <geometry_msgs/Twist.h>
 #include <OpenSoT/tasks/force/CoM.h>
 #include <QPPVM_RT_plugin/ForceOptimization.h>
+#include <ForceAccPlugin/FloatingBaseEstimation.h>
 
 #include <XBotInterface/Logger.hpp>
 
@@ -125,9 +126,13 @@ namespace demo {
          
          ForceOptimization::Ptr _force_opt;
 
-        void sense();
+        void sense(const double period);
 
         void QPPVMControl(const double time);
+        
+        estimation::FloatingBaseEstimator::Ptr _fb_estimator;
+        XBot::ImuSensor::ConstPtr _imu;
+        std::vector<std::string> _contact_links;
 
     };
 

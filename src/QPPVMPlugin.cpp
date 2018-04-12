@@ -62,9 +62,19 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _set_ref = false;
 
     _robot = handle->getRobotInterface();
+    _imu = _robot->getImu().begin()->second;
 //    _model = XBot::ModelInterface::getModel("external/qppvm/config/floating_base/centauro_simple_example.yaml");
 //     _model = XBot::ModelInterface::getModel("configs/ADVR_shared/user_example/centauro_simple_example.yaml");
     _model = XBot::ModelInterface::getModel(handle->getPathToConfigFile());
+    
+    
+    
+    
+    
+    _contact_links = {"l_sole", "r_sole"};
+    Eigen::MatrixXd contact_matrix(6,6); contact_matrix.setIdentity(6,6);
+    _fb_estimator = std::make_shared<estimation::FloatingBaseEstimator>(_model, _imu, _contact_links, contact_matrix);
+    
 
     for(int i = 0; i < _robot->legs(); i++)
     {
@@ -277,14 +287,14 @@ void QPPVMPlugin::QPPVMControl(const double time)
     
     _matlogger->add("h", _h);
 
-     _tau_d = _tau_d + _h;
+     _tau_d.noalias() = _tau_d + _h;
 
      _matlogger->add("tau_desired", _tau_d);
 }
 
 void QPPVMPlugin::on_start(double time)
 {
-    sense();
+    sense(0); 
 
     _start_time = time;
     
@@ -330,7 +340,7 @@ void QPPVMPlugin::on_start(double time)
 void QPPVMPlugin::control_loop(double time, double period)
 {
 
-    sense();
+    sense(period);
     
     QPPVMControl(time);
 
@@ -360,21 +370,25 @@ void QPPVMPlugin::control_loop(double time, double period)
     _robot->move();
 }
 
-void QPPVMPlugin::sense()
+void QPPVMPlugin::sense(const double period)
 {
-     Eigen::Affine3d w_T_fb;
-     Eigen::Vector6d fb_twist;
+//      Eigen::Affine3d w_T_fb;
+//      Eigen::Vector6d fb_twist;
+// 
+//      w_T_fb.translation() = _sh_fb_pos.get();
+//      w_T_fb.linear() = _sh_fb_rot.get().toRotationMatrix();
+//      fb_twist = _sh_fb_vel.get();
 
-     w_T_fb.translation() = _sh_fb_pos.get();
-     w_T_fb.linear() = _sh_fb_rot.get().toRotationMatrix();
-     fb_twist = _sh_fb_vel.get();
 
-
-     _model->setFloatingBaseState(w_T_fb, fb_twist);
-     _model->update();
-
+//      _model->setFloatingBaseState(w_T_fb, fb_twist);
+//      _model->update();
+    
 
     _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::Velocity, XBot::Sync::MotorSide);
+    
+    _fb_estimator->update(period);
+    _fb_estimator->log(_matlogger);
+    
     _model->getJointPosition(_q);
     _model->getJointVelocity(_dq);
     _model->computeNonlinearTerm(_h);

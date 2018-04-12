@@ -97,7 +97,7 @@ bool XBotPlugin::ForceAccExample::init_control_plugin(XBot::Handle::Ptr handle)
 
     _model->getFloatingBaseLink(floating_base_name);
 
-    _fb_estimator = std::make_shared<estimation::FloatingBaseEstimator>(_model, _imu, _contact_links, contact_matrix);
+    _fb_estimator   = std::make_shared<estimation::FloatingBaseEstimator>(_model, _imu, _contact_links, contact_matrix);
 
 
     _model->getRobotState("home", _qhome);

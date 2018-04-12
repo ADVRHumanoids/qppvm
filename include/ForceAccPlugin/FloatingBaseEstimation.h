@@ -116,7 +116,9 @@ estimation::FloatingBaseEstimator::FloatingBaseEstimator(XBot::ModelInterface::P
 void estimation::FloatingBaseEstimator::log(XBot::MatLogger::Ptr logger)
 {
     logger->add("fb_est_qdot", _qdot_est);
-    // logger->add("contact_speed", _Jc.generate_and_get()*_qdot);
+    logger->add("fb_est_A", _A);
+    logger->add("fb_est_b", _b);
+    logger->add("contact_speed", _Jc.generate_and_get()*_qdot);
 }
 
 
