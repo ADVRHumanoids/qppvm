@@ -54,6 +54,7 @@ add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
 
 if ( Xenomai_FOUND )
     set_xeno_flags(GcompFixedBase)
+    set_xeno_flags(QPPVMPlugin)
 endif()
 
 ##########
