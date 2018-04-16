@@ -33,8 +33,11 @@
 #include <OpenSoT/tasks/force/CoM.h>
 #include <QPPVM_RT_plugin/ForceOptimization.h>
 #include <ForceAccPlugin/FloatingBaseEstimation.h>
+#include <std_msgs/Float64.h>
 
 #include <XBotInterface/Logger.hpp>
+#include <atomic>
+
 
 namespace demo {
 
@@ -54,11 +57,20 @@ namespace demo {
     private:
 
         typedef OpenSoT::tasks::torque::CartesianImpedanceCtrl CartesianImpedanceTask;
+        
+        void set_gains();
 
         void cart_stiffness_callback(const geometry_msgs::TwistConstPtr& msg, int id);
         void cart_damping_callback(const geometry_msgs::TwistConstPtr& msg, int id);
+        void impedance_gain_callback(const std_msgs::Float64ConstPtr& msg);
+        void feedback_gain_callback(const std_msgs::Float64ConstPtr& msg);
+        std::atomic<double> _impedance_gain, _feedback_gain;
 
         std::vector<XBot::RosUtils::SubscriberWrapper::Ptr> _cart_stiffness_sub, _cart_damping_sub;
+        XBot::RosUtils::SubscriberWrapper::Ptr _impedance_gain_sub, _feedback_gain_sub;
+        
+        std::vector<Eigen::Vector6d> _Fopt;
+        Eigen::VectorXd _tau_opt;
 
         double _start_time;
 
@@ -88,8 +100,8 @@ namespace demo {
         Eigen::VectorXd _q_ref, _q0;
         Eigen::VectorXd _q_home;
 
-        Eigen::VectorXd _k;
-        Eigen::VectorXd _d;
+        Eigen::VectorXd _k, _k_ref;
+        Eigen::VectorXd _d, _d_ref;
 
         Eigen::VectorXd _tau_d, _tau_offset;
         Eigen::VectorXd _h;

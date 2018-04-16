@@ -128,6 +128,8 @@ void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
         
         Eigen::VectorXd _x_value;
         Eigen::MatrixXd _JC;
+        Eigen::VectorXd _fc_i;
+        Eigen::VectorXd _Fci;
         
     };
     
@@ -208,6 +210,9 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
     
+    /* Initialize solution */
+    _x_value.setZero(opt.getSize());
+    
 }
 
 
@@ -218,7 +223,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     Fc.resize(_contact_links.size());
     
     _forza_giusta->setFixedBaseTorque(fixed_base_torque);
-    _autostack->update(Eigen::VectorXd());
+    _autostack->update(_x_value);
     
     if(!_solver->solve(_x_value))
     {
@@ -229,10 +234,13 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     
     for(int i = 0; i < _contact_links.size(); i++)
     {
-        _wrenches[i].getValue(_x_value, Fc[i]);
+        
+        _wrenches[i].getValue(_x_value, _Fci);
+        Fc[i] = _Fci;
         
         _model->getJacobian(_contact_links[i], _JC);
-        tau.noalias() -= _JC.transpose()*Fc[i];
+        _fc_i.noalias() = _JC.transpose()*_Fci;
+        tau -= _fc_i;
     }
     
     
@@ -243,7 +251,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
 void demo::ForceOptimization::log(XBot::MatLogger::Ptr logger)
 {
     _autostack->log(logger);
-    _solver->log(logger);
+//     _solver->log(logger);
 }
 
 

@@ -53,11 +53,17 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _sh_fb_rot.set(Eigen::Quaterniond::Identity());
     _sh_fb_vel.set(Eigen::Vector6d::Zero());
 
+    _impedance_gain_sub = handle->getRosHandle()->subscribe("/qppvm/impedance_gain",
+                                                     1,
+                                                     &QPPVMPlugin::impedance_gain_callback, this);
+    
+    _feedback_gain_sub = handle->getRosHandle()->subscribe("/qppvm/feedback_gain",
+                                                     1,
+                                                     &QPPVMPlugin::feedback_gain_callback, this);
 
 
 
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
-    XBot::Logger::SetVerbosityLevel(XBot::Logger::Severity::LOW);
 
     _set_ref = false;
 
@@ -140,8 +146,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     Eigen::VectorXd _d_matrix(_model->getJointNum());
     _k_matrix.setZero(_k_matrix.size());
     _d_matrix.setZero(_d_matrix.size());
-    _k_matrix.segment(6,_robot->getJointNum()) = 0.001*_k;//0.1*_k;
-    _d_matrix.segment(6,_robot->getJointNum()) = 0.01*_d;//0.1*_d;
+    _k_matrix.segment(6,_robot->getJointNum()) = 0.01*_k;//0.1*_k;
+    _d_matrix.segment(6,_robot->getJointNum()) = 0.1*_d;//0.1*_d;
 
 
     std::cout<<"_d_matrix: \n"<<_d_matrix.transpose()<<std::endl;
@@ -180,6 +186,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
         _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
         _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+//         _Kc.setIdentity(6,6); _Kc = 0.*_Kc;
+//         _Dc.setIdentity(6,6); _Dc = 0.*_Dc;
 
         imp_task->setStiffnessDamping(_Kc, _Dc);
         imp_task->useInertiaMatrix(true);
@@ -194,7 +202,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     Eigen::MatrixXd _Kw(6,6); _Kw.setIdentity(6,6);
     Eigen::MatrixXd _Dw(6,6); _Dw.setIdentity(6,6);
 
-    double k_waist = 500;
+    double k_waist = 500.;
+    double d_waist = 50.;
     
     _Kw(0,0) = k_waist;
     _Kw(1,1) = k_waist;
@@ -203,12 +212,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _Kw(4,4) = 0.5*k_waist;
     _Kw(5,5) = 0.5*k_waist;
 
-    _Dw(0,0) = 200.;
-    _Dw(1,1) = 200.;
-    _Dw(2,2) = 200.;
-    _Dw(3,3) = 50.;
-    _Dw(4,4) = 50.;
-    _Dw(5,5) = 50.;
+    _Dw(0,0) = d_waist;
+    _Dw(1,1) = d_waist;
+    _Dw(2,2) = d_waist;
+    _Dw(3,3) = d_waist;
+    _Dw(4,4) = d_waist;
+    _Dw(5,5) = d_waist;
 
     _waist->setStiffnessDamping(_Kw, _Dw);
       
@@ -249,7 +258,9 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 //     _autostack =  ( (legs_impedance_aggr + ee_impedance_aggr) / ( _joint_task) ) << _torque_limits;
     
-     _autostack =  ( legs_impedance_aggr / _waist /ee_impedance_aggr /  _joint_task ) << _torque_limits;
+//      _autostack =  ( legs_impedance_aggr / _waist /ee_impedance_aggr /  _joint_task ) << _torque_limits;
+    
+    _autostack =  ( legs_impedance_aggr / _waist /  _joint_task ) << _torque_limits;
         
 //    _autostack =  ( legs_impedance_aggr /  _joint_task ) << _torque_limits;
 
@@ -262,38 +273,73 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 
     _force_opt = boost::make_shared<ForceOptimization>(_model, links_in_contact);
+    
+    _impedance_gain.store(1.0);
+    _feedback_gain.store(0.0);
+    
 
     return true;
 }
 
 void QPPVMPlugin::QPPVMControl(const double time)
 {
-     _tau_max = _tau_max_const - _h;
-     _tau_min = _tau_min_const - _h;
-     _torque_limits->setTorqueLimits(_tau_max, _tau_min);
-
-
-     _autostack->update(_q);
-     _autostack->log(_matlogger);
-
-     if(!_solver->solve(_tau_d)){
-         _tau_d.setZero(_tau_d.size());
-         XBot::Logger::error("Unable to solve \n");
-     }
-
-     _solver->log(_matlogger);
-
-     _matlogger->add("tau_qp", _tau_d);
     
+    set_gains();
+
+    _tau_max = _tau_max_const - _h;
+    _tau_min = _tau_min_const - _h;
+    _torque_limits->setTorqueLimits(_tau_max, _tau_min);
+
+
+    _autostack->update(_q);
+    _autostack->log(_matlogger);
+
+    if(!_solver->solve(_tau_d)){
+        _tau_d.setZero(_tau_d.size());
+        XBot::Logger::error("Unable to solve \n");
+    }
+
+    _solver->log(_matlogger);
+
+    _matlogger->add("tau_qp", _tau_d);
+
     _matlogger->add("h", _h);
 
-     _tau_d.noalias() = _tau_d + _h;
+    _tau_d.noalias() = _tau_d + _h;
 
-     _matlogger->add("tau_desired", _tau_d);
+    _matlogger->add("tau_desired", _tau_d);
+    
+
 }
+
+void demo::QPPVMPlugin::set_gains()
+{
+    double current_gain = _feedback_gain.load();
+    _Kc.setIdentity(6,6);
+    _Dc = _Kc * 50 * std::sqrt(current_gain);
+    _Kc *= 500 * current_gain;
+    
+    _joint_task->setStiffnessDamping(_Kc, _Dc);
+    _waist->setStiffnessDamping(_Kc, _Dc);
+    
+    for(auto imptask : _leg_impedance_task)
+    {
+        imptask->setStiffnessDamping(_Kc, _Dc);
+    }
+}
+
 
 void QPPVMPlugin::on_start(double time)
 {
+    
+    
+    _robot->setControlMode("torso", XBot::ControlMode::Idle());
+    _robot->setControlMode("left_arm", XBot::ControlMode::Idle());
+    _robot->setControlMode("right_arm", XBot::ControlMode::Idle());
+    _robot->setControlMode("neck", XBot::ControlMode::Idle());
+    
+    
+    
     sense(0); 
 
     _start_time = time;
@@ -343,24 +389,26 @@ void QPPVMPlugin::control_loop(double time, double period)
     sense(period);
     
     QPPVMControl(time);
-
-    std::vector<Eigen::Vector6d> Fopt;
-    Eigen::VectorXd tau_opt;
     
-    _force_opt->compute(_tau_d, Fopt, tau_opt);
+    _force_opt->compute(_tau_d, _Fopt, _tau_opt);
 
-    _matlogger->add("tau_opt", tau_opt);
+    _matlogger->add("tau_opt", _tau_opt);
     
     for(int i = 0; i < _robot->legs(); i++)
     {
-        _matlogger->add("wrench_opt_" + std::to_string(i+1), Fopt[i]);
+        _matlogger->add("wrench_opt_" + std::to_string(i+1), _Fopt[i]);
     }
     
     _force_opt->log(_matlogger);
+    _model->setJointEffort(_tau_opt);
     
+    _k_ref = _impedance_gain.load() * _k;
+    _d_ref = std::sqrt(2.0) * _impedance_gain.load() * _d;
 
-    _robot->setReferenceFrom(*_model, XBot::Sync::Effort, XBot::Sync::Impedance);
-     _robot->setEffortReference(tau_opt.tail(_model->getActuatedJointNum()));
+    _robot->setReferenceFrom(*_model, XBot::Sync::Effort); // , XBot::Sync::Impedance);
+    
+    _robot->setStiffness(_k_ref);
+    _robot->setDamping(_d_ref);
 
 
     _matlogger->add("time_matlogger", time);
@@ -392,7 +440,6 @@ void QPPVMPlugin::sense(const double period)
     _model->getJointPosition(_q);
     _model->getJointVelocity(_dq);
     _model->computeNonlinearTerm(_h);
-//    _model->computeGravityCompensation(_h);
 }
 
 
@@ -444,3 +491,26 @@ void demo::QPPVMPlugin::cart_damping_callback(const geometry_msgs::TwistConstPtr
     _leg_impedance_task[id]->setDamping(_Dc);
 }
 
+void demo::QPPVMPlugin::impedance_gain_callback(const std_msgs::Float64ConstPtr& msg)
+{
+
+    double impedance_gain = msg->data;
+    impedance_gain = std::min(impedance_gain, 1.0);
+    impedance_gain = std::max(impedance_gain, 0.0);
+
+    Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", impedance_gain);
+
+    _impedance_gain.store(impedance_gain);
+}
+
+void demo::QPPVMPlugin::feedback_gain_callback(const std_msgs::Float64ConstPtr& msg)
+{
+
+    double feedback_gain = msg->data;
+    feedback_gain = std::min(feedback_gain, 1.0);
+    feedback_gain = std::max(feedback_gain, 0.0);
+
+    Logger::info(Logger::Severity::HIGH, "Setting feedback gain to %f \n", feedback_gain);
+
+    _feedback_gain.store(feedback_gain);
+}
