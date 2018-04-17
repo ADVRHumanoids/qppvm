@@ -291,6 +291,13 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _damping_Feet_gain.store(0.0);
     _joints_gain.store(0.0);
 
+
+    /* Init cartesian ifc */
+    YAML::Node yaml_file = YAML::LoadFile(handle->getPathToConfigFile());
+    XBot::Cartesian::ProblemDescription ik_problem(yaml_file["CartesianInterface"]["problem_description"], _model);
+    _ci = std::make_shared<XBot::Cartesian::CartesianInterfaceImpl>(_model, ik_problem);
+    _sync_from_nrt = std::make_shared<XBot::Cartesian::Utils::SyncFromIO>("/xbotcore/cartesian_interface", handle->getSharedMemory());
+
     return true;
 }
 
@@ -356,7 +363,7 @@ void demo::QPPVMPlugin::set_gains()
 
 void QPPVMPlugin::on_start(double time)
 {
-    
+    _first_sync_done = false;
     
     _robot->setControlMode("torso", XBot::ControlMode::Idle());
     _robot->setControlMode("left_arm", XBot::ControlMode::Idle());
@@ -411,6 +418,8 @@ void QPPVMPlugin::on_start(double time)
 void QPPVMPlugin::control_loop(double time, double period)
 {
 
+    sync_cartesian_ifc(time, period);
+    
     sense(period);
     
     QPPVMControl(time);
@@ -520,6 +529,45 @@ void demo::QPPVMPlugin::cart_damping_callback(const geometry_msgs::TwistConstPtr
     XBot::Logger::info(XBot::Logger::Severity::HIGH) << "New damping: " << _Dc.diagonal().transpose() << XBot::Logger::endl();
 
     _leg_impedance_task[id]->setDamping(_Dc);
+}
+
+void demo::QPPVMPlugin::sync_cartesian_ifc(double time, double period)
+{
+    /* Sync cartesian references from ROS */
+    
+    if(!_first_sync_done)
+    {
+        if(_sync_from_nrt->try_reset(_model))
+        {
+            _first_sync_done = true;
+            XBot::Logger::info(Logger::Severity::HIGH, "Resetting NRT CI \n");
+        }
+    }
+    
+    if(_first_sync_done)
+    {
+        if(_sync_from_nrt->try_sync(time, _ci, _model))
+        {
+            _matlogger->add("sync_done", 1);
+        }
+        else
+        {
+            _matlogger->add("sync_done", 0);
+        }
+    }
+    
+
+    if(!_ci->update(time, period))
+    {
+        XBot::Logger::error("CartesianInterface: unable to solve \n");
+        return;
+    }
+    
+    
+    /* Update qppvm references */
+    Eigen::Affine3d T_ref;
+    _ci->getPoseReference(_waist->getDistalLink(), T_ref);
+    _waist->setReference(T_ref.matrix());
 }
 
 void demo::QPPVMPlugin::impedance_gain_callback(const std_msgs::Float64ConstPtr& msg)

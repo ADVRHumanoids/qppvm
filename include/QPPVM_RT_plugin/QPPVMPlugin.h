@@ -41,6 +41,8 @@
 #include <dynamic_reconfigure_advr/server.h>
 #include <QPPVM_RT_plugin/QppvmConfig.h>
 
+#include <cartesian_interface/CartesianPlugin/Utils.h>
+
 namespace demo {
 
     class QPPVMPlugin : public XBot::XBotControlPlugin {
@@ -146,17 +148,28 @@ namespace demo {
          ForceOptimization::Ptr _force_opt;
 
         void sense(const double period);
+        
+        void sync_cartesian_ifc(double time, double period);
 
         void QPPVMControl(const double time);
         
         estimation::FloatingBaseEstimator::Ptr _fb_estimator;
         XBot::ImuSensor::ConstPtr _imu;
         std::vector<std::string> _contact_links;
+        
+        /* Cartesian ifc variables */
+        XBot::Cartesian::CartesianInterfaceImpl::Ptr _ci;
+        XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
+        bool _first_sync_done;
 
     };
 
 }
 #endif
+
+
+
+
 
 
 

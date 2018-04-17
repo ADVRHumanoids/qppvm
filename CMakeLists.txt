@@ -68,15 +68,12 @@ endif()
 ##########
 ## Link ##
 ##########
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES})
 # target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
-
-
-add_dependencies(QPPVMPlugin ${PROJECT_NAME}_gencfg)
 
 #############
 ## Install ##
