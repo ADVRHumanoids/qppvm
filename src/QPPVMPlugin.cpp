@@ -48,7 +48,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 {
     
     
-    dynamic_reconfigure::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
+    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
 
     f = boost::bind(&QPPVMPlugin::cfg_callback, this, _1, _2);
     _server.setCallback(f);
@@ -69,7 +69,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                      1,
                                                      &QPPVMPlugin::feedback_gain_callback, this);
     
-//     _fb_pub = handle->getRosHandle()->advertise<geometry_msgs::Pose>("/qppvm/floating_base", 1);
+    _fb_pub = handle->getRosHandle()->advertise<geometry_msgs::Pose>("/qppvm/floating_base", 1);
 
 
 
@@ -208,8 +208,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                             _q,
                                                            *_model,
                                                            "Waist",
-                                                           "world",
-                                                        OpenSoT::Indices::range(0,2));
+                                                           "world");
     Eigen::MatrixXd _Kw(6,6); _Kw.setIdentity(6,6);
     Eigen::MatrixXd _Dw(6,6); _Dw.setIdentity(6,6);
 
@@ -286,8 +285,10 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _force_opt = boost::make_shared<ForceOptimization>(_model, links_in_contact);
     
     _impedance_gain.store(1.0);
-    _stiffness_gain.store(0.0);
-    _damping_gain.store(0.0); 
+    _stiffness_Waist_gain.store(0.0);
+    _damping_Waist_gain.store(0.0); 
+    _stiffness_Feet_gain.store(0.0);
+    _damping_Feet_gain.store(0.0);
     _joints_gain.store(0.0);
 
     return true;
@@ -326,24 +327,30 @@ void QPPVMPlugin::QPPVMControl(const double time)
 
 void demo::QPPVMPlugin::set_gains()
 {
-    double current_stiffness_gain = _stiffness_gain.load();
-    double current_damping_gain = _damping_gain.load();
+    double current_stiffness_Waist_gain = _stiffness_Waist_gain.load();
+    double current_damping_Waist_gain = _damping_Waist_gain.load();
+    double current_stiffness_Feet_gain = _stiffness_Feet_gain.load();
+    double current_damping_Feet_gain = _damping_Feet_gain.load();
     double current_joint_gain = _joints_gain.load();
-    _Kc.setIdentity(6,6);
-    _Dc = _Kc * current_damping_gain;
-    _Kc *= current_stiffness_gain;
+    _Kc.setIdentity(6,6); _Dc.setIdentity(6,6);
+    _Dc *= current_damping_Waist_gain;
+    _Kc *= current_stiffness_Waist_gain;
     
     _waist->setStiffnessDamping(_Kc, _Dc);
+    
+    _Kc.setIdentity(6,6); _Dc.setIdentity(6,6);
+    _Dc *= current_damping_Feet_gain;
+    _Kc *= current_stiffness_Feet_gain;
     
     for(auto imptask : _leg_impedance_task)
     {
         imptask->setStiffnessDamping(_Kc, _Dc);
     }
     
-    _Kc.setIdentity(); _Dc.setIdentity();
-    _Kc = _Kc * 100. * current_joint_gain;
-    _Dc = _Dc * 10. * current_joint_gain;
-    _joint_task->setStiffnessDamping(_Kc, _Dc);
+    _Kj.setIdentity(_model->getJointNum(),_model->getJointNum()); _Dj.setIdentity(_model->getJointNum(),_model->getJointNum());
+    _Kj = _Kj * 100. * current_joint_gain;
+    _Dj = _Dj * 10. * current_joint_gain;
+    _joint_task->setStiffnessDamping(_Kj, _Dj);
 }
 
 
@@ -463,7 +470,7 @@ void QPPVMPlugin::sense(const double period)
     Eigen::Affine3d T;
     _model->getFloatingBasePose(T);
     tf::poseEigenToMsg(T, pose_msg);
-//     _fb_pub->pushToQueue(pose_msg);
+    _fb_pub->pushToQueue(pose_msg);
 }
 
 
@@ -536,19 +543,22 @@ void demo::QPPVMPlugin::feedback_gain_callback(const std_msgs::Float64ConstPtr& 
 
     Logger::info(Logger::Severity::HIGH, "Setting feedback gain to %f \n", feedback_gain);
 
-    _stiffness_gain.store(feedback_gain);
-    _damping_gain.store(std::sqrt(feedback_gain));
+    _stiffness_Waist_gain.store(feedback_gain);
+    _damping_Waist_gain.store(std::sqrt(feedback_gain));
 }
 
 
 void demo::QPPVMPlugin::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
 {
     _impedance_gain.store(config.impedance_gain);
-    _stiffness_gain.store(config.stiffness);
-    _damping_gain.store(config.damping);
+    _stiffness_Waist_gain.store(config.stiffness_waist);
+    _damping_Waist_gain.store(config.damping_waist);
+    _stiffness_Feet_gain.store(config.stiffness_feet);
+    _damping_Feet_gain.store(config.damping_feet);
     _joints_gain.store(config.joints_gain);
     
     Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", config.impedance_gain);
     Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_gain);
-    Logger::info(Logger::Severity::HIGH, "Setting stiffness gain to %f and damping gain to %f\n", config.stiffness, config.damping);
+    Logger::info(Logger::Severity::HIGH, "Setting Waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
+    Logger::info(Logger::Severity::HIGH, "Setting Feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
 }
