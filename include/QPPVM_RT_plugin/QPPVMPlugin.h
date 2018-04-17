@@ -38,6 +38,8 @@
 #include <XBotInterface/Logger.hpp>
 #include <atomic>
 
+#include <dynamic_reconfigure/server.h>
+#include <QPPVM_RT_plugin/QppvmConfig.h>
 
 namespace demo {
 
@@ -64,9 +66,13 @@ namespace demo {
         void cart_damping_callback(const geometry_msgs::TwistConstPtr& msg, int id);
         void impedance_gain_callback(const std_msgs::Float64ConstPtr& msg);
         void feedback_gain_callback(const std_msgs::Float64ConstPtr& msg);
-        std::atomic<double> _impedance_gain, _feedback_gain;
+        void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
+        std::atomic<double> _impedance_gain, _stiffness_gain, _damping_gain, _joints_gain;
+        
+        dynamic_reconfigure::Server<QPPVM_RT_plugin::QppvmConfig> _server;
 
         std::vector<XBot::RosUtils::SubscriberWrapper::Ptr> _cart_stiffness_sub, _cart_damping_sub;
+        XBot::RosUtils::PublisherWrapper::Ptr _fb_pub;
         XBot::RosUtils::SubscriberWrapper::Ptr _impedance_gain_sub, _feedback_gain_sub;
         
         std::vector<Eigen::Vector6d> _Fopt;

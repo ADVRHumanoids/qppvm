@@ -22,6 +22,8 @@
 #include <boost/make_shared.hpp>
 #include <QPPVM_RT_plugin/ForceOptimization.h>
 #include <OpenSoT/constraints/force/WrenchLimits.h>
+#include <geometry_msgs/Pose.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #define TRJ_TIME 3.0
 
@@ -44,14 +46,20 @@ QPPVMPlugin::QPPVMPlugin()
 
 bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 {
-
-    _sh_fb_pos = handle->getSharedMemory()->getSharedObject<Eigen::Vector3d>("/gazebo/floating_base_position");
-    _sh_fb_rot = handle->getSharedMemory()->getSharedObject<Eigen::Quaterniond>("/gazebo/floating_base_orientation");
-    _sh_fb_vel = handle->getSharedMemory()->getSharedObject<Eigen::Vector6d>("/gazebo/floating_base_velocity");
     
-    _sh_fb_pos.set(Eigen::Vector3d::Zero());
-    _sh_fb_rot.set(Eigen::Quaterniond::Identity());
-    _sh_fb_vel.set(Eigen::Vector6d::Zero());
+    
+    dynamic_reconfigure::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
+
+    f = boost::bind(&QPPVMPlugin::cfg_callback, this, _1, _2);
+    _server.setCallback(f);
+
+//     _sh_fb_pos = handle->getSharedMemory()->getSharedObject<Eigen::Vector3d>("/gazebo/floating_base_position");
+//     _sh_fb_rot = handle->getSharedMemory()->getSharedObject<Eigen::Quaterniond>("/gazebo/floating_base_orientation");
+//     _sh_fb_vel = handle->getSharedMemory()->getSharedObject<Eigen::Vector6d>("/gazebo/floating_base_velocity");
+//     
+//     _sh_fb_pos.set(Eigen::Vector3d::Zero());
+//     _sh_fb_rot.set(Eigen::Quaterniond::Identity());
+//     _sh_fb_vel.set(Eigen::Vector6d::Zero());
 
     _impedance_gain_sub = handle->getRosHandle()->subscribe("/qppvm/impedance_gain",
                                                      1,
@@ -60,6 +68,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _feedback_gain_sub = handle->getRosHandle()->subscribe("/qppvm/feedback_gain",
                                                      1,
                                                      &QPPVMPlugin::feedback_gain_callback, this);
+    
+//     _fb_pub = handle->getRosHandle()->advertise<geometry_msgs::Pose>("/qppvm/floating_base", 1);
 
 
 
@@ -276,8 +286,9 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _force_opt = boost::make_shared<ForceOptimization>(_model, links_in_contact);
     
     _impedance_gain.store(1.0);
-    _feedback_gain.store(0.0);
-    
+    _stiffness_gain.store(0.0);
+    _damping_gain.store(0.0); 
+    _joints_gain.store(0.0);
 
     return true;
 }
@@ -315,18 +326,24 @@ void QPPVMPlugin::QPPVMControl(const double time)
 
 void demo::QPPVMPlugin::set_gains()
 {
-    double current_gain = _feedback_gain.load();
+    double current_stiffness_gain = _stiffness_gain.load();
+    double current_damping_gain = _damping_gain.load();
+    double current_joint_gain = _joints_gain.load();
     _Kc.setIdentity(6,6);
-    _Dc = _Kc * 50 * std::sqrt(current_gain);
-    _Kc *= 500 * current_gain;
+    _Dc = _Kc * current_damping_gain;
+    _Kc *= current_stiffness_gain;
     
-    _joint_task->setStiffnessDamping(_Kc, _Dc);
     _waist->setStiffnessDamping(_Kc, _Dc);
     
     for(auto imptask : _leg_impedance_task)
     {
         imptask->setStiffnessDamping(_Kc, _Dc);
     }
+    
+    _Kc.setIdentity(); _Dc.setIdentity();
+    _Kc = _Kc * 100. * current_joint_gain;
+    _Dc = _Dc * 10. * current_joint_gain;
+    _joint_task->setStiffnessDamping(_Kc, _Dc);
 }
 
 
@@ -441,6 +458,12 @@ void QPPVMPlugin::sense(const double period)
     _model->getJointPosition(_q);
     _model->getJointVelocity(_dq);
     _model->computeNonlinearTerm(_h);
+    
+    geometry_msgs::Pose pose_msg;
+    Eigen::Affine3d T;
+    _model->getFloatingBasePose(T);
+    tf::poseEigenToMsg(T, pose_msg);
+//     _fb_pub->pushToQueue(pose_msg);
 }
 
 
@@ -513,5 +536,19 @@ void demo::QPPVMPlugin::feedback_gain_callback(const std_msgs::Float64ConstPtr& 
 
     Logger::info(Logger::Severity::HIGH, "Setting feedback gain to %f \n", feedback_gain);
 
-    _feedback_gain.store(feedback_gain);
+    _stiffness_gain.store(feedback_gain);
+    _damping_gain.store(std::sqrt(feedback_gain));
+}
+
+
+void demo::QPPVMPlugin::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
+{
+    _impedance_gain.store(config.impedance_gain);
+    _stiffness_gain.store(config.stiffness);
+    _damping_gain.store(config.damping);
+    _joints_gain.store(config.joints_gain);
+    
+    Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", config.impedance_gain);
+    Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_gain);
+    Logger::info(Logger::Severity::HIGH, "Setting stiffness gain to %f and damping gain to %f\n", config.stiffness, config.damping);
 }

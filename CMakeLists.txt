@@ -17,10 +17,18 @@ find_package(XCM REQUIRED)
 find_package(trajectory_utils REQUIRED)
 find_package(OpenSoT REQUIRED)
 
+#add dynamic reconfigure api
+find_package(catkin REQUIRED dynamic_reconfigure)
+generate_dynamic_reconfigure_options(
+  cfg/Qppvm.cfg
+)
+
+# make sure configure headers are built before any node using them
+
+
 set(ENABLE_XENO CACHE BOOL "ON")
 if ( ${ENABLE_XENO} )
    find_package(Xenomai)
-   find_package(RTnet)
 endif()
 
 # C++11
@@ -52,7 +60,7 @@ add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 #add_executable(ModelValidationTest src/ModelValidationTest.cpp)
 add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
 
-if ( Xenomai_FOUND )
+if ( Xenomai_FOUND AND ${ENABLE_XENO} )
     set_xeno_flags(GcompFixedBase)
     set_xeno_flags(QPPVMPlugin)
 endif()
@@ -60,12 +68,15 @@ endif()
 ##########
 ## Link ##
 ##########
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
+target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${catkin_LIBRARIES})
 # target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
+
+
+add_dependencies(QPPVMPlugin ${PROJECT_NAME}_gencfg)
 
 #############
 ## Install ##
