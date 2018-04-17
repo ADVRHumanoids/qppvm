@@ -605,8 +605,8 @@ void demo::QPPVMPlugin::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint3
     _damping_Feet_gain.store(config.damping_feet);
     _joints_gain.store(config.joints_gain);
     
-    Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", config.impedance_gain);
+    Logger::info(Logger::Severity::HIGH, "\nSetting impedance gain to %f \n", config.impedance_gain);
     Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_gain);
-    Logger::info(Logger::Severity::HIGH, "Setting Waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
-    Logger::info(Logger::Severity::HIGH, "Setting Feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
+    Logger::info(Logger::Severity::HIGH, "Setting waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
+    Logger::info(Logger::Severity::HIGH, "Setting feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
 }

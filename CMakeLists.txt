@@ -14,7 +14,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(MacroYCMInstallLibrary)
 
 find_package(XCM REQUIRED)
-find_package(trajectory_utils REQUIRED)
+find_package(cartesian_interface REQUIRED)
 find_package(OpenSoT REQUIRED)
 
 #add dynamic reconfigure api
