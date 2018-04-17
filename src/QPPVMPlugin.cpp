@@ -198,7 +198,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                             _q,
                                                            *_model,
                                                            "Waist",
-                                                           "world");
+                                                           "world",
+                                                        OpenSoT::Indices::range(0,2));
     Eigen::MatrixXd _Kw(6,6); _Kw.setIdentity(6,6);
     Eigen::MatrixXd _Dw(6,6); _Dw.setIdentity(6,6);
 
