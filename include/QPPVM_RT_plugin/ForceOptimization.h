@@ -10,92 +10,11 @@
 #include <OpenSoT/constraints/GenericConstraint.h>
 #include <OpenSoT/constraints/TaskToConstraint.h>
 #include <OpenSoT/tasks/MinimizeVariable.h>
+#include <OpenSoT/tasks/force/FloatingBase.h>
+#include <OpenSoT/constraints/force/CoP.h>
 
 namespace demo {
     
-    class ForzaGiusta : public OpenSoT::Task<Eigen::MatrixXd, Eigen::VectorXd>
-    {
-        
-    public:
-        
-        typedef boost::shared_ptr<ForzaGiusta> Ptr;
-        
-        ForzaGiusta(XBot::ModelInterface::Ptr model, 
-                    const std::vector<OpenSoT::AffineHelper>& wrenches,
-                    std::vector<std::string> contact_links);
-        
-        void setFixedBaseTorque(const Eigen::VectorXd& fixed_base_torque);
-        
-    private:
-        
-        virtual void _update(const Eigen::VectorXd& x);
-
-        virtual void _log(XBot::MatLogger::Ptr logger);
-        
-        XBot::ModelInterface::Ptr _model;
-        std::vector<std::string> _contact_links;
-        std::vector<bool> _enabled_contacts;
-        std::vector<OpenSoT::AffineHelper> _wrenches;
-        OpenSoT::AffineHelper _task;
-        Eigen::MatrixXd _J_i;
-        Eigen::Matrix6d _Jfb_i;
-        Eigen::Vector6d _x_ref_fb;
-        
-        
-    };
-    
-ForzaGiusta::ForzaGiusta(XBot::ModelInterface::Ptr model, 
-                         const std::vector< OpenSoT::AffineHelper >& wrenches, 
-                         std::vector< std::string > contact_links): 
-    Task< Eigen::MatrixXd, Eigen::VectorXd >("FORZA_GIUSTA", wrenches[0].getInputSize()),
-    _model(model),
-    _contact_links(contact_links),
-    _wrenches(wrenches),
-    _enabled_contacts(wrenches.size(), true)
-{
-    _x_ref_fb.setZero();
-    
-    update(Eigen::VectorXd());
-}
-
-void ForzaGiusta::setFixedBaseTorque(const Eigen::VectorXd& fixed_base_torque)
-{
-    if(fixed_base_torque.size() != _model->getJointNum())
-    {
-        throw std::invalid_argument("fixed_base_torque != _model->getJointNum()");
-    }
-    
-    _x_ref_fb = fixed_base_torque.head<6>();
-}
-
-
-void ForzaGiusta::_update(const Eigen::VectorXd& x)
-{
-    _task.setZero(_wrenches[0].getInputSize(), 6);
-    
-    for(int i = 0; i < _enabled_contacts.size(); i++)
-    {
-        if(!_enabled_contacts[i]){
-            continue;
-        }
-        else {
-            _model->getJacobian(_contact_links[i], _J_i);
-            _Jfb_i = _J_i.block<6,6>(0,0).transpose();
-            _task = _task + _Jfb_i * _wrenches[i];
-        }
-    }
-    
-    _A = _task.getM();
-    _b = -_task.getq() + _x_ref_fb;
-}
-
-void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
-{
-    OpenSoT::Task< Eigen::MatrixXd, Eigen::VectorXd >::_log(logger);
-}
-
-
- 
     class ForceOptimization 
     {
       
@@ -122,7 +41,7 @@ void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
         std::vector< OpenSoT::AffineHelper > _wrenches;
         
         OpenSoT::constraints::force::FrictionCone::Ptr _friction_cone;
-        ForzaGiusta::Ptr _forza_giusta;
+        OpenSoT::tasks::force::FloatingBase::Ptr _forza_giusta;
         OpenSoT::solvers::iHQP::Ptr _solver;
         OpenSoT::AutoStack::Ptr _autostack;
         
@@ -199,14 +118,22 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     
     /* Construct forza giusta task */
-    _forza_giusta = boost::make_shared<ForzaGiusta>(_model, _wrenches, _contact_links);
+    _forza_giusta = boost::make_shared<OpenSoT::tasks::force::FloatingBase>(*_model, _wrenches, _contact_links);
     
     /* Min wrench aggregated */
     auto min_force_aggr = boost::make_shared<OpenSoT::tasks::Aggregated>(min_wrench_tasks, opt.getSize());
+
+    Eigen::Vector2d X_LIMS; X_LIMS.setZero(); X_LIMS[0] = -0.08; X_LIMS[1] = 0.08;
+    Eigen::Vector2d Y_LIMS; Y_LIMS.setZero(); Y_LIMS[0] = -0.05; Y_LIMS[1] = 0.05;
+    auto CoP = boost::make_shared<OpenSoT::constraints::force::CoP>(*_model, _wrenches, _contact_links,
+                                                                    X_LIMS, Y_LIMS);
     
     /* Define optimization problem */
-    _autostack = boost::make_shared<OpenSoT::AutoStack>(min_force_aggr);
-    _autostack << boost::make_shared<OpenSoT::constraints::TaskToConstraint>(_forza_giusta);
+//    _autostack = boost::make_shared<OpenSoT::AutoStack>(min_force_aggr);
+//    _autostack << boost::make_shared<OpenSoT::constraints::TaskToConstraint>(_forza_giusta);
+    _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);
+    //_autostack<<CoP;
+    _autostack<<wrench_bounds[0]<<wrench_bounds[1];
     
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
     
@@ -222,7 +149,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
 {
     Fc.resize(_contact_links.size());
     
-    _forza_giusta->setFixedBaseTorque(fixed_base_torque);
+    _forza_giusta->setFloatingBaseTorque(fixed_base_torque.head<6>());
     _autostack->update(_x_value);
     
     if(!_solver->solve(_x_value))
