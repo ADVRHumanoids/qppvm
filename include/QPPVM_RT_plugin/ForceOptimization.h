@@ -108,7 +108,7 @@ void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
                           );
         
         bool compute(const Eigen::VectorXd& fixed_base_torque, 
-                     std::vector<Eigen::Vector6d>& Fc,
+                     std::vector<Eigen::VectorXd>& Fc,
                      Eigen::VectorXd& tau
                     );
         
@@ -204,6 +204,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     /* Define optimization problem */
     _autostack = boost::make_shared<OpenSoT::AutoStack>(min_force_aggr);
+    _autostack << wrench_bounds[0] << wrench_bounds[1]<< wrench_bounds[2] << wrench_bounds[3];
     _autostack << boost::make_shared<OpenSoT::constraints::TaskToConstraint>(_forza_giusta);
     
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
@@ -212,7 +213,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
 
 
 bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque, 
-                                      std::vector<Eigen::Vector6d>& Fc,
+                                      std::vector<Eigen::VectorXd>& Fc,
                                       Eigen::VectorXd& tau)
 {
     Fc.resize(_contact_links.size());

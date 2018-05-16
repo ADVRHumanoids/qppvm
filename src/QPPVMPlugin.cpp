@@ -20,7 +20,9 @@
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
 #include <qpOASES.hpp>
 #include <boost/make_shared.hpp>
-#include <QPPVM_RT_plugin/ForceOptimization.h>
+// #include <QPPVM_RT_plugin/ForceOptimization.h>
+//#include <QPPVM_RT_plugin/ForceOptimization_L1.h>
+#include <QPPVM_RT_plugin/ForceOptimization_L1d.h>
 #include <OpenSoT/constraints/force/WrenchLimits.h>
 
 #define TRJ_TIME 3.0
@@ -57,7 +59,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 
     _matlogger = XBot::MatLogger::getLogger("/tmp/qppvm_log");
-    XBot::Logger::SetVerbosityLevel(XBot::Logger::Severity::LOW);
+    XBot::Logger::SetVerbosityLevel(XBot::Logger::Severity::HIGH);
 
     _set_ref = false;
 
@@ -333,16 +335,18 @@ void QPPVMPlugin::control_loop(double time, double period)
     
     QPPVMControl(time);
 
-    std::vector<Eigen::Vector6d> Fopt;
+    std::vector<Eigen::VectorXd> Fopt;
+    std::vector<Eigen::VectorXd> dFopt;
     Eigen::VectorXd tau_opt;
     
-    _force_opt->compute(_tau_d, Fopt, tau_opt);
+    _force_opt->compute(_tau_d,_start_time,time,period,Fopt,dFopt, tau_opt);
 
     _matlogger->add("tau_opt", tau_opt);
     
     for(int i = 0; i < 4; i++)
     {
         _matlogger->add("wrench_opt_" + std::to_string(i+1), Fopt[i]);
+        _matlogger->add("wrench_d_opt_" + std::to_string(i+1), dFopt[i]);
     }
     
     _force_opt->log(_matlogger);

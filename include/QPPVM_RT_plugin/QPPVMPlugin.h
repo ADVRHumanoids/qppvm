@@ -31,7 +31,9 @@
 #include <OpenSoT/SubTask.h>
 #include <geometry_msgs/Twist.h>
 #include <OpenSoT/tasks/force/CoM.h>
-#include <QPPVM_RT_plugin/ForceOptimization.h>
+// #include <QPPVM_RT_plugin/ForceOptimization.h>
+// #include <QPPVM_RT_plugin/ForceOptimization_L1.h>
+#include <QPPVM_RT_plugin/ForceOptimization_L1d.h>
 
 #include <XBotInterface/Logger.hpp>
 
