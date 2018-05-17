@@ -292,8 +292,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     /* Construct min variation task */
     int size = 48;
-    Eigen::MatrixXd A(size,size); A.setIdentity();
-    //Eigen::VectorXd b(size); 
+    Eigen::MatrixXd A(size,size); 
+    A.setIdentity();
     
     b.setZero(48);
     
@@ -307,10 +307,10 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
 //         min_variation<< wrench_bounds[i];
       
     
-//         _autostack = (_forza_giusta/min_variation);
+        _autostack = (_forza_giusta/min_variation);
     
      
-         _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);      
+//          _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);      
        
                    
    
@@ -406,12 +406,11 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
          
          /* Wrench bounds */  
         Eigen::VectorXd wrench_d_ub(12), wrench_d_lb(12);
-        wrench_d_ub << 5, 5, 1e3, 0,  0, 0, 5, 5, 0.0, 0,  0, 0;
+        wrench_d_ub << 5, 5, 1e3, 0,  0, 0, 5, 5, 0.0, 0, 0, 0;
         wrench_d_lb <<  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
         
-        wrench_d_bounds[i]->setBounds((1.0/period)*(wrench_d_ub-Fc[i]),(1.0/period)*(wrench_d_lb-Fc[i]));
+         wrench_d_bounds[i]->setBounds((1.0/period)*(wrench_d_ub-Fc[i]),(1.0/period)*(wrench_d_lb-Fc[i]));
 
-        
         
         Eigen::MatrixXd tmpM(6,12);
         tmpM<<Eigen::MatrixXd::Identity(6,6),-Eigen::MatrixXd::Identity(6,6);       
@@ -431,22 +430,24 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     {
     
     Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
-    wrench_dot_ub <<  30,  30,  300, 1e6,  1e6,  1e6;
-    wrench_dot_lb <<  -30, -30, -300, -1e6, -1e6, -1e6;
+    wrench_dot_ub <<  1e3,  1e3,  1e3, 1e6,  1e6,  1e6;
+    wrench_dot_lb <<  -1e3, -1e3, -1e3, -1e6, -1e6, -1e6;
     
     for(int i = 0; i < _contact_links.size(); i++)             
     wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb);
     
     }
     
-    min_variation->setb(_x_value);
    
     if(time_-start_time_ >= 2.0 && !_change_ref1)
     {
     b.setZero(48);
-    b[2] = 1e6;
-    b[14] = 1e6;
-    b[26] = 1e6;
+//     b[0] = 1e4;b[1] = 1e4;
+    b[2] = 1e4;
+//     b[12] = 1e4;b[13] = 1e4;
+    b[14] = 1e4;
+//     b[24] = 1e4;b[25] = 1e4;
+    b[26] = 1e4;
     b[38] = 0.;
     min_variation->setb(b);
     _change_ref1 = true;
@@ -456,10 +457,10 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     if(time_-start_time_ >= 5.0 && !_change_ref2)
     {
     b.setZero(48);
-    b[2] = 1e6;
-    b[14] = 1e6;
+    b[2] = 1e4;
+    b[14] = 1e4;
     b[26] = 0;
-    b[38] = 1e6;
+    b[38] = 1e4;
     min_variation->setb(b);
     _change_ref2 = true;
     std::cout<<"change2"<<std::endl;
