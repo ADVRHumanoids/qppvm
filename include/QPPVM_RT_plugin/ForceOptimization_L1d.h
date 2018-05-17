@@ -307,10 +307,10 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
 //         min_variation<< wrench_bounds[i];
       
     
-        _autostack = (_forza_giusta/min_variation);
+//         _autostack = (_forza_giusta/min_variation);
     
      
-//         _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);      
+         _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);      
        
                    
    
@@ -427,12 +427,12 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     
     
    
-    if(time_-start_time_ >= 2)
+    if(time_-start_time_ >= 1.0)
     {
     
     Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
-    wrench_dot_ub <<  1e3,  1e3,  1e3, 1e6,  1e6,  1e6;
-    wrench_dot_lb <<  -1e3, -1e3, -1e3, -1e6, -1e6, -1e6;
+    wrench_dot_ub <<  30,  30,  300, 1e6,  1e6,  1e6;
+    wrench_dot_lb <<  -30, -30, -300, -1e6, -1e6, -1e6;
     
     for(int i = 0; i < _contact_links.size(); i++)             
     wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb);
@@ -444,27 +444,27 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     if(time_-start_time_ >= 2.0 && !_change_ref1)
     {
     b.setZero(48);
-    b[2] = 0;//450.59;
-    b[14] = 10000.;//74.85;
-    b[26] = 10000.;//384.47;
-    b[38] = 10000.;
+    b[2] = 1e6;
+    b[14] = 1e6;
+    b[26] = 1e6;
+    b[38] = 0.;
     min_variation->setb(b);
     _change_ref1 = true;
     std::cout<<"change1"<<std::endl;
     }
     
-//     if(time_-start_time_ >= 4.0 && !_change_ref2)
-//     {
-//     b.setZero(48);
-//     b[2] = 10000;//450.59;
-//     b[14] = 10000.;//74.85;
-//     b[26] = 10000.;//384.47;
-//     b[38] = 0.;
-//     min_variation->setb(b);
-//     _change_ref2 = true;
-//     std::cout<<"change2"<<std::endl;
-//     }
-//     
+    if(time_-start_time_ >= 5.0 && !_change_ref2)
+    {
+    b.setZero(48);
+    b[2] = 1e6;
+    b[14] = 1e6;
+    b[26] = 0;
+    b[38] = 1e6;
+    min_variation->setb(b);
+    _change_ref2 = true;
+    std::cout<<"change2"<<std::endl;
+    }
+    
     
     return true;
     
