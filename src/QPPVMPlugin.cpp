@@ -169,7 +169,10 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
         
         links_in_contact.push_back(_robot->leg(i).getTipLinkName());
 
-        _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+//         _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+//         _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+        
+        _Kc.setIdentity(6,6); _Kc = 200.*_Kc;
         _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
 
         imp_task->setStiffnessDamping(_Kc, _Dc);

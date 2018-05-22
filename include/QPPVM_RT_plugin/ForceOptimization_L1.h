@@ -299,7 +299,12 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
         
         Eigen::MatrixXd tmpM(6,12);
         tmpM<<Eigen::MatrixXd::Identity(6,6),-Eigen::MatrixXd::Identity(6,6);
-        _wrenches_dot.emplace_back(tmpM*opt.getVariable(cl));
+        OpenSoT::AffineHelper wrench_var = tmpM*opt.getVariable(cl);
+        _wrenches_dot.emplace_back(wrench_var);
+        
+//         _wrenches_dot.emplace_back(tmpM*opt.getVariable(cl));        
+
+        
         
         wrench_dot_bounds.push_back( boost::make_shared<OpenSoT::constraints::GenericConstraint>(cl+"wrench_dot_bound",
                                                                                                 _wrenches_dot.back(),
