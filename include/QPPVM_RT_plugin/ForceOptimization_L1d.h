@@ -67,7 +67,7 @@ ForzaGiusta::ForzaGiusta(XBot::ModelInterface::Ptr model,
     _wrenches_lasso.resize(_contact_links.size());
     for(int i = 0; i < _contact_links.size(); i++)
     _wrenches_lasso[i].setZero(6);
-//      _wrenches_lasso[i].setZero(1);
+//     _wrenches_lasso[i].setZero(1);
 
     
     period_=0.001;
@@ -86,10 +86,9 @@ void ForzaGiusta::setFixedBaseTorque(const Eigen::VectorXd& fixed_base_torque, d
     
        _x_ref_fb = fixed_base_torque.head<6>();
      
-//       _x_ref_fb << fixed_base_torque[0], fixed_base_torque[1], fixed_base_torque[2], 0, 0, 0;
-      
-//        _x_ref_fb << 0, 0, 100, 0, 0, 0;
-//         _x_ref_fb <<100;
+//       _x_ref_fb << fixed_base_torque[0], fixed_base_torque[1], fixed_base_torque[2], 0, 0, 0;  
+//       _x_ref_fb << 0, 0, 100, 0, 0, 0;
+//       _x_ref_fb <<100;
           
      period_=period;
     
@@ -123,30 +122,18 @@ void ForzaGiusta::_update(const Eigen::VectorXd& x)
             
               _Jfb_i=_J_i.block<6,6>(0,0).transpose(); 
               
-//                _Jfb_i.setIdentity(6,6);
-              
-//                _Jfb_i.setZero(6,6);
-//                Eigen::MatrixXd tmp_J;
-//                _Jfb_i.block<3,3>(0,0)<<tmp_J.setIdentity(3,3); 
-               
-//     A_w.setZero();
-//     tmp_A_w.setIdentity();
-//     A_w.block<6,12>(0,0)<<tmp_A_w,-tmp_A_w;
-                          
               _task = _task + (period_ * _Jfb_i *_wrenches_dot[i]) + (_Jfb_i * _wrenches_lasso[i]);
-              
-//               _task = _task + (period_ *_wrenches_dot[i]) + ( _wrenches_lasso[i]);
+                                                 
+//            _task = _task + (period_ *_wrenches_dot[i]) + ( _wrenches_lasso[i]);
               
          
               
-             
-//              Eigen::MatrixXd P(24,24);
-//              P.setIdentity(24,24);
+             /* Weight matrix */                                  
+//              Eigen::MatrixXd P_i(6,6); 
+//              P_i.setIdentity();
+//              P_i.block<3,3>(3,3).setZero();
 //              
-//              Eigen::MatrixXd P_i(24,24);
-//              P_i=P.block<6,6>(i*6,i*6) * (period_*(i+1));
-//              
-//               _task = _task + (_Jfb_i + P_i) * (period_ *  _wrenches_dot[i]) + _Jfb_i * _wrenches_lasso[i];
+//               _task = _task + (_Jfb_i + (i+1)*P_i) * (period_ *  _wrenches_dot[i]) + _Jfb_i * _wrenches_lasso[i];
                           
         }
     }
@@ -155,8 +142,8 @@ void ForzaGiusta::_update(const Eigen::VectorXd& x)
     _A = _task.getM();
     _b = -_task.getq() + _x_ref_fb;
     
-//     std::cout << "A:\n" << _A << std::endl;
-//     std::cout << "b:\n" << _b << std::endl;
+//      std::cout << "A:\n" << _A << std::endl;
+//      std::cout << "b:\n" << _b << std::endl;
     
 }
 
@@ -207,7 +194,7 @@ void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
         double start_time_, time_;
         
         
-        Eigen::VectorXd _x_value;
+        Eigen::VectorXd _dx_value;
         Eigen::MatrixXd _JC;
         
         Eigen::VectorXd b; 
@@ -218,9 +205,6 @@ void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
         std::vector<OpenSoT::constraints::GenericConstraint::Ptr> wrench_d_bounds;
         
         std::vector<Eigen::VectorXd> Fc_old;
-        std::vector<Eigen::VectorXd> Fc_p;
-        std::vector<Eigen::VectorXd> Fc_m;
-        std::vector<Eigen::VectorXd> Fc_t;
         std::vector<Eigen::VectorXd> dFc;
         std::vector<Eigen::VectorXd> wrenches_lasso; 
         Eigen::VectorXd err_lb, err_ub;  
@@ -254,47 +238,34 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     
     Fc_old.resize(_contact_links.size());
-    Fc_p.resize(_contact_links.size());
-    Fc_m.resize(_contact_links.size());
-    Fc_t.resize(_contact_links.size());
-    for(int i = 0; i < _contact_links.size(); i++){
+    for(int i = 0; i < _contact_links.size(); i++)
     Fc_old[i].setZero(12);
-    Fc_p[i].setZero(6);
-    Fc_m[i].setZero(6);
-    Fc_t[i].setZero(12);
-    }
     
-//     for(int i = 0; i < _contact_links.size(); i++){
+    
+//     for(int i = 0; i < _contact_links.size(); i++)
 //     Fc_old[i].setZero(2);
-//     Fc_p[i].setZero(1);
-//     Fc_m[i].setZero(1);
-//     Fc_t[i].setZero(2);
-//     }
 
     OpenSoT::OptvarHelper opt(vars);
        
     
     /* Wrench bounds */
     Eigen::VectorXd wrench_d_ub(12), wrench_d_lb(12);
-    wrench_d_ub << 25, 25, 1e3, 0,  0, 0,  25, 25, 0.0, 0,  0, 0;
+    wrench_d_ub << 25, 25, 500, 0,  0, 0,  25, 25, 0.0, 0,  0, 0;
     wrench_d_lb <<  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
     
-//     wrench_d_ub << 60, 60, 60, 0,  0, 0, 60, 60, 0, 0,  0, 0;
-//     wrench_d_lb <<  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
     
     Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
     wrench_dot_ub <<  1e6, 1e6,  1e6, 1e6,  1e6,  1e6;
     wrench_dot_lb << -1e6, -1e6,  -1e6, -1e6,  -1e6,  -1e6;
     
-//     wrench_dot_ub <<  50,  50,  50, 50,  50,  50;
-//     wrench_dot_lb << -50, -50, -50, -50, -50, -50;
        
 
-//      /* Wrench bounds */
+//      /* wrench_d bounds */
 //     Eigen::VectorXd wrench_d_ub(2), wrench_d_lb(2);
 //     wrench_d_ub << 60, 0;
 //     wrench_d_lb <<  0, 0;
-//     
+
+//      /* wrench_dot bounds */
 //     Eigen::VectorXd wrench_dot_ub(1), wrench_dot_lb(1);    
 //     wrench_dot_ub <<  50;
 //     wrench_dot_lb << -50;
@@ -328,8 +299,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
         OpenSoT::AffineHelper wrench_var = tmpM*opt.getVariable(cl);
         _wrenches_dot.emplace_back(wrench_var);
         
-        std::cout << "opt var " << cl << ": \n" << opt.getVariable(cl) << std::endl;
-        std::cout << "wrench var " << cl << ": \n" << wrench_var << std::endl;
+//         std::cout << "opt var " << cl << ": \n" << opt.getVariable(cl) << std::endl;
+//         std::cout << "wrench var " << cl << ": \n" << wrench_var << std::endl;
         
         
         
@@ -350,31 +321,25 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     
     /* Construct forza giusta task */
-      _forza_giusta = boost::make_shared<ForzaGiusta>(_model,_wrenches_dot, _contact_links);
-   
-        _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);    
-        
-   
-        
-//     /* Construct min variation task */
-//     int size = 48;
-//     Eigen::MatrixXd A(size,size); 
-//     A.setIdentity();
-//     
-//     b.setZero(48);
-//     
-// //     b[2] = 1000;
-// //     b[14] = 1000.;
-// //     b[26] = 1000.;
-// //     b[38] = 1000.;
-//     
-//     min_variation = boost::make_shared<OpenSoT::tasks::GenericTask>("MIN_VARIATION",A,b);
-// //      for(unsigned int i = 0; i < 4; ++i)
-// //         min_variation<< wrench_bounds[i];
-//       
-//     
-// 
-//     _autostack = (_forza_giusta/min_variation);
+    _forza_giusta = boost::make_shared<ForzaGiusta>(_model,_wrenches_dot, _contact_links);
+
+           
+    /* Construct min variation task */
+    Eigen::MatrixXd A(12,48); 
+    A.setZero();
+    A.block<12,12>(0,32).setIdentity();
+    A*=.001;
+    
+    b.setZero(12);
+  
+           
+    min_variation = boost::make_shared<OpenSoT::tasks::GenericTask>("MIN_VARIATION",A,b);
+    
+//       _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);
+
+//      _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta + min_variation);  
+     
+     _autostack = (_forza_giusta/min_variation);
          
        
                    
@@ -387,8 +352,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     }
         
        
-      _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0);             
-//       _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0, OpenSoT::solvers::solver_back_ends::OSQP);
+       _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0);             
+//        _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0, OpenSoT::solvers::solver_back_ends::OSQP);
    
    
 for(unsigned int i = 0; i < _autostack->getStack().size(); ++i)
@@ -431,7 +396,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     start_time_= _start_time;
     time_= time;
     
-    double period_=.001;
+    double period_= period;
     
     _forza_giusta->setFixedBaseTorque(fixed_base_torque, period_);  
     
@@ -440,12 +405,11 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     
     
     
-    if(!_solver->solve(_x_value))
+    if(!_solver->solve(_dx_value))
     {
         std::cout<<"FORCE OPTIMIZATION COULD NOT SOLVE!"<<std::endl;
         return false;
     }
-    
     
       
     
@@ -453,7 +417,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     
     for(int i = 0; i < _contact_links.size(); i++)
     {
-         _wrenches_d[i].getValue(_x_value, dFc[i]);
+         _wrenches_d[i].getValue(_dx_value, dFc[i]);
                         
         Fc[i] =   Fc_old[i] + dFc[i] * period;
         Fc_old[i] = Fc[i];
@@ -472,84 +436,73 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
          
 
                               
-          /* Wrench_dot bounds */ 
+          /* wrench_dot bounds */ 
          Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
-         wrench_dot_ub <<  1e6, 1e6,  1e6, 1e6,  1e6,  1e6;50, 50, 1e3, 0,  0, 0, 50, 50, 0, 0, 0, 0;
-         wrench_dot_lb << -1e6, -1e6,  -1e6, -1e6,  -1e6,  -1e6;
+         wrench_dot_ub <<  1e6,  1e6,  1e6,  1e6,  1e6,  1e6;
+         wrench_dot_lb << -1e6, -1e6, -1e6, -1e6, -1e6, -1e6;
          
-//          wrench_dot_ub <<  50,  50,  50, 50, 50, 50;
-//          wrench_dot_lb << -50,  -50, -50, -50, -50, -50;
-           
-//         /* Wrench_dot bounds */ 
-//          Eigen::VectorXd wrench_dot_ub(1), wrench_dot_lb(1);        
-//          wrench_dot_ub <<  50;
-//          wrench_dot_lb << -50;
+            
+//       Eigen::VectorXd wrench_dot_ub(1), wrench_dot_lb(1);        
+//       wrench_dot_ub <<  50;
+//       wrench_dot_lb << -50;
         
          wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb);
          
-         /* Wrench bounds */  
+         /* wrench_d bounds */  
         Eigen::VectorXd wrench_d_ub(12), wrench_d_lb(12);
-        wrench_d_ub << 25, 25, 1e3, 0,  0, 0,  25, 25, 0.0, 0,  0, 0;
+        wrench_d_ub << 25, 25, 500, 0,  0, 0,  25, 25, 0.0, 0,  0, 0;
         wrench_d_lb <<  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
         
-//         wrench_d_ub << 60, 60, 60, 0,  0, 0, 60, 60, 0, 0,  0, 0;
-//         wrench_d_lb <<  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-         
+
+//     Eigen::VectorXd wrench_d_ub(2), wrench_d_lb(2);
+//     wrench_d_ub << 60, 0;
+//     wrench_d_lb <<  0, 0; 
          
 
                 
         wrench_d_bounds[i]->setBounds((1.0/period_)*(wrench_d_ub-Fc[i]),(1.0/period_)*(wrench_d_lb-Fc[i]));
 
-                      
-
+                     
     }
   
     
     _forza_giusta->setWrenches(wrenches_lasso);
+       
     
+    b.setZero(12);
+    min_variation->setb(b - Fc[3]);
+      
+
     
-//      min_variation->setb(_x_value);
-    
-    
-    
-//     if(time_-start_time_ >= 1.0)
-//     {
-//     
-//     Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
-//     wrench_dot_ub <<  1e2,  1e2,  1e2, 1e6,  1e6,  1e6;
-//     wrench_dot_lb <<  -1e2, -1e2, -1e2, -1e6, -1e6, -1e6;
-//     
-//     for(int i = 0; i < _contact_links.size(); i++)             
-//     wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb);
-//   
-//     }
-   
-/*     if(time_-start_time_ >= 2.0 && !_change_ref1)
-    {
-    b.setZero(48);
-//     b[0] = 1e4;b[1] = 1e4;
-    b[2] = 1e4;
-//     b[12] = 1e4;b[13] = 1e4;
-    b[14] = 1e4;
-//     b[24] = 1e4;b[25] = 1e4;
-    b[26] = 1e4;
-    b[38] = 0.;
-    min_variation->setb(b);
-    _change_ref1 = true;
+//     if(time_-start_time_ >= 2.0 && !_change_ref1)
+    if(time_-start_time_ >= 2.0)
+    {       
     std::cout<<"change1"<<std::endl;
+    
+    Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
+    wrench_dot_ub <<   4e3,  4e3,  4e3,  4e3,  4e3,  4e3;
+    wrench_dot_lb <<  -4e3, -4e3, -4e3, -4e3, -4e3, -4e3;
+    
+    for(int i = 0; i < _contact_links.size(); i++)             
+    wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb); 
+    
+         
+    Eigen::MatrixXd A(12,48); 
+    A.setZero();
+    A.block<12,12>(0,24).setIdentity();
+//     A.block<12,12>(0,0).setIdentity();
+    A*=.001;    
+              
+    b.setZero(12);
+    min_variation->setb(b - Fc[2]);
+//     min_variation->setb(b - Fc[0]);
+    min_variation->setA(A);
+    
+    _change_ref1 = true;
+    
     }
     
-    if(time_-start_time_ >= 5.0 && !_change_ref2)
-    {
-    b.setZero(48);
-    b[2] = 1e4;
-    b[14] = 1e4;
-    b[26] = 0;
-    b[38] = 1e4;
-    min_variation->setb(b);
-    _change_ref2 = true;
-    std::cout<<"change2"<<std::endl;        
-    }*/   
+
     
     return true;
     
