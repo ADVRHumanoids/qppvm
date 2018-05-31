@@ -331,29 +331,43 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     A*=.001;
     
     b.setZero(12);
-  
+
            
     min_variation = boost::make_shared<OpenSoT::tasks::GenericTask>("MIN_VARIATION",A,b);
     
-//       _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);
+//        _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);
 
 //      _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta + min_variation);  
      
      _autostack = (_forza_giusta/min_variation);
          
-       
                    
    
    for(int i = 0; i < _contact_links.size(); i++)
     {    
          
-         _autostack  <<  wrench_d_bounds[i]<< wrench_dot_bounds[i] ;
+         _autostack  <<  wrench_d_bounds[i] << wrench_dot_bounds[i];
        
     }
+    
+    
+//     /* Define friction cones */
+//     OpenSoT::constraints::force::FrictionCone::friction_cones friction_cones;
+// 
+//     for(auto cl : _contact_links)
+//     {
+//         friction_cones.emplace_back(cl, 0.3);
+//     }
+//     
+//     auto friction_constraint = boost::make_shared<OpenSoT::constraints::force::FrictionCone>(_wrenches_dot, *_model, friction_cones);
+//     
+//     _autostack << friction_constraint;
         
        
-       _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0);             
-//        _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0, OpenSoT::solvers::solver_back_ends::OSQP);
+    
+    
+        _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 0.0);             
+//         _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1e-10, OpenSoT::solvers::solver_back_ends::OSQP);
    
    
 for(unsigned int i = 0; i < _autostack->getStack().size(); ++i)
@@ -422,7 +436,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
         Fc[i] =   Fc_old[i] + dFc[i] * period;
         Fc_old[i] = Fc[i];
         
-        std::cout<<"Fc: \n"<<Fc[i]<<std::endl;
+//         std::cout<<"Fc: \n"<<Fc[i]<<std::endl;
                
         
         _model->getJacobian(_contact_links[i], _JC);
@@ -470,37 +484,44 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
        
     
     b.setZero(12);
+
     min_variation->setb(b - Fc[3]);
       
 
     
-//     if(time_-start_time_ >= 2.0 && !_change_ref1)
-    if(time_-start_time_ >= 2.0)
+    if(time_-start_time_ >= 1.0 && !_change_ref1)
     {       
-    std::cout<<"change1"<<std::endl;
-    
-    Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
-    wrench_dot_ub <<   4e3,  4e3,  4e3,  4e3,  4e3,  4e3;
-    wrench_dot_lb <<  -4e3, -4e3, -4e3, -4e3, -4e3, -4e3;
-    
-    for(int i = 0; i < _contact_links.size(); i++)             
-    wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb); 
-    
-         
+    std::cout<<"change leg"<<std::endl;
+     _change_ref1 = true;
+    }
+   
+    if(time_-start_time_ >= 1.0)
+    {
     Eigen::MatrixXd A(12,48); 
     A.setZero();
     A.block<12,12>(0,24).setIdentity();
 //     A.block<12,12>(0,0).setIdentity();
     A*=.001;    
               
-    b.setZero(12);
     min_variation->setb(b - Fc[2]);
 //     min_variation->setb(b - Fc[0]);
-    min_variation->setA(A);
-    
-    _change_ref1 = true;
-    
+    min_variation->setA(A);    
     }
+    
+    
+   if(time_-start_time_ >= 1.0 && time_-start_time_ <= 2.0)
+   {  
+    Eigen::VectorXd wrench_dot_ub(6), wrench_dot_lb(6);
+//     wrench_dot_ub <<   4e3,  4e3,  4e3,  4e3,  4e3,  4e3;
+//     wrench_dot_lb <<  -4e3, -4e3, -4e3, -4e3, -4e3, -4e3;
+    
+    wrench_dot_ub <<   500,  500,  500,  4e3,  4e3,  4e3;
+    wrench_dot_lb <<  -500, -500, -500, -4e3, -4e3, -4e3;
+    
+    for(int i = 0; i < _contact_links.size(); i++)             
+    wrench_dot_bounds[i]->setBounds(wrench_dot_ub, wrench_dot_lb); 
+   }
+    
     
 
     

@@ -22,7 +22,7 @@
 #include <boost/make_shared.hpp>
 // #include <QPPVM_RT_plugin/ForceOptimization.h>
 //#include <QPPVM_RT_plugin/ForceOptimization_L1.h>
-#include <QPPVM_RT_plugin/ForceOptimization_L1d.h>
+#include <QPPVM_RT_plugin/ForceOptimization_L1ds.h>
 #include <OpenSoT/constraints/force/WrenchLimits.h>
 
 #define TRJ_TIME 3.0
@@ -252,7 +252,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 
     _solver = boost::make_shared<iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
-    _solver->log(_matlogger);
+//     _solver->log(_matlogger);
 
 
     _force_opt = boost::make_shared<ForceOptimization>(_model, links_in_contact);
