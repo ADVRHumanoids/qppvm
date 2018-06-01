@@ -505,9 +505,10 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
    
            
     /* Construct min variation task */    
-   min_variation = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("MIN_VARIATION", _wrenches_min_var[2]/_wrenches_min_var[3]);
-  
-   min_variation_GT = boost::make_shared<OpenSoT::tasks::GenericTask>("MIN_VARIATION GT",_wrenches_min_var[2].getM(),_wrenches_min_var[2].getq());
+//    min_variation = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("MIN_VARIATION", _wrenches_min_var[2]/_wrenches_min_var[3]);  
+//    min_variation_GT = boost::make_shared<OpenSoT::tasks::GenericTask>("MIN_VARIATION GT",_wrenches_min_var[2].getM(),_wrenches_min_var[2].getq());   
+
+      min_variation = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("MIN_VARIATION", _wrenches_dot[2].segment(2,1)/_wrenches_dot[3].segment(2,1));
     
     
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -623,13 +624,18 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     _forza_giusta->setWrenches(wrenches_lasso);
     _friction_constraint->setWrenches(wrenches_lasso);
      
-    Eigen::VectorXd tmpt(24);
-    tmpt.setZero();
-    tmpt.head(12)=Fc[2];
-    min_variation->setReference(- (1.0/period_) * tmpt);
-    
-    
+//     Eigen::VectorXd tmpt(24);
+//     tmpt.setZero();
+//     tmpt.head(12)=Fc[2];
+//     min_variation->setReference(- (1.0/period_) * tmpt);
+   
 //      min_variation_GT->setb( - (1.0/period_) * Fc[2]);
+    
+       
+    Eigen::VectorXd tmpt(2);
+    tmpt.setZero();
+    tmpt[0]=wrenches_lasso[2][2];
+    min_variation->setReference(- (1.0/period_) * tmpt);
 
      
 
@@ -650,13 +656,18 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
 //      wrench_dot_bounds_lb[i]->setBounds(inf_b, wrench_dot_lb);
 //      }
      
-     Eigen::VectorXd tmpt(24);
-     tmpt.setZero();
-     tmpt.tail(12)=Fc[3];
-     min_variation->setReference(- (1.0/period_) * tmpt);
+//      Eigen::VectorXd tmpt(24);
+//      tmpt.setZero();
+//      tmpt.tail(12)=Fc[3];
+//      min_variation->setReference(- (1.0/period_) * tmpt);
      
 //      min_variation_GT->setA(_wrenches_min_var[3].getM());
 //      min_variation_GT->setb( (1.0/period_) * Fc[3]);
+     
+         Eigen::VectorXd tmpt(2);
+         tmpt.setZero();
+         tmpt[1]=wrenches_lasso[3][2];
+         min_variation->setReference(- (1.0/period_) * tmpt);
 
           
      }
