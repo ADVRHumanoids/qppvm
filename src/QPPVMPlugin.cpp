@@ -22,8 +22,9 @@
 #include <boost/make_shared.hpp>
 // #include <QPPVM_RT_plugin/ForceOptimization.h>
 //#include <QPPVM_RT_plugin/ForceOptimization_L1.h>
-#include <QPPVM_RT_plugin/ForceOptimization_L1ds.h>
+#include <QPPVM_RT_plugin/ForceOptimization_test.h>
 #include <OpenSoT/constraints/force/WrenchLimits.h>
+
 
 #define TRJ_TIME 3.0
 

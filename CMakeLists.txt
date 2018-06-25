@@ -16,6 +16,9 @@ include(MacroYCMInstallLibrary)
 find_package(XCM REQUIRED)
 find_package(trajectory_utils REQUIRED)
 find_package(OpenSoT REQUIRED)
+find_package(PkgConfig)
+pkg_check_modules(CBC REQUIRED cbc)
+pkg_check_modules(OSICBC REQUIRED osi-cbc)
 
 set(ENABLE_XENO CACHE BOOL "ON")
 if ( ${ENABLE_XENO} )
@@ -39,7 +42,7 @@ endif()
 
 # include
 include_directories(include
-                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS}
+                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${CBC_INCLUDE_DIRS} ${OSICBC_INCLUDE_DIRS}
                     )
 
 ###########
@@ -59,12 +62,14 @@ endif()
 ##########
 ## Link ##
 ##########
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
+
+target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${CBC_LIBRARIES} ${OSICBC_LIBRARIES})
 # target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
+# target_link_libraries(ExampleCBC ${XCM_LIBRARIES})
 
 #############
 ## Install ##

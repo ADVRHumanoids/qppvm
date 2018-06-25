@@ -33,7 +33,7 @@
 #include <OpenSoT/tasks/force/CoM.h>
 // #include <QPPVM_RT_plugin/ForceOptimization.h>
 // #include <QPPVM_RT_plugin/ForceOptimization_L1.h>
-#include <QPPVM_RT_plugin/ForceOptimization_L1ds.h>
+#include <QPPVM_RT_plugin/ForceOptimization_test.h>
 
 #include <XBotInterface/Logger.hpp>
 

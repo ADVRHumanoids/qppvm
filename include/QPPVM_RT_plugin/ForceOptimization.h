@@ -159,8 +159,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     /* Wrench bounds */
     Eigen::VectorXd wrench_ub(6), wrench_lb(6);
-    wrench_ub << 1000, 1000, 1000, 50, 50, 50;
-    wrench_lb << -1000, -1000, 0, -50, -50, -50;
+    wrench_ub << 1000, 1000, 1000, 0, 0, 0;
+    wrench_lb << -1000, -1000, -1000, 0, 0, 0;
 
     std::vector<OpenSoT::constraints::GenericConstraint::Ptr> wrench_bounds;
     std::list<OpenSoT::solvers::iHQP::TaskPtr> min_wrench_tasks;
@@ -210,8 +210,11 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     _autostack = boost::make_shared<OpenSoT::AutoStack>(min_force_aggr);
     _autostack << wrench_bounds[0] << wrench_bounds[1]<< wrench_bounds[2] << wrench_bounds[3];
     _autostack << boost::make_shared<OpenSoT::constraints::TaskToConstraint>(_forza_giusta);
+    _autostack << friction_constraint;
     
-    _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
+//      _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
+     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1e-10, OpenSoT::solvers::solver_back_ends::OSQP);
+
     
 }
 
@@ -225,6 +228,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
                                       Eigen::VectorXd& tau)
 {
     Fc.resize(_contact_links.size());
+    dFc.resize(_contact_links.size());
     
     _forza_giusta->setFixedBaseTorque(fixed_base_torque);
     _autostack->update(Eigen::VectorXd());
