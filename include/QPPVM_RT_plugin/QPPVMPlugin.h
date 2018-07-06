@@ -35,6 +35,10 @@
 
 #include <XBotInterface/Logger.hpp>
 
+#include <cartesian_interface/CartesianPlugin/Utils.h>
+#include <cartesian_interface/CartesianInterfaceImpl.h>
+
+
 namespace demo {
 
     class QPPVMPlugin : public XBot::XBotControlPlugin {
@@ -128,6 +132,10 @@ namespace demo {
         void sense();
 
         void QPPVMControl(const double time);
+
+        XBot::Cartesian::CartesianInterfaceImpl::Ptr _ci;
+        XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
+        bool _first_sync_done;
 
     };
 

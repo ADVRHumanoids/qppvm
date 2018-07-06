@@ -160,8 +160,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                     _q,
                                                                    *_model,
                                                                    _robot->leg(i).getTipLinkName(),
-                                                                   "world",
-                                                                   OpenSoT::Indices::range(0,2)
+                                                                   "world"//,
+                                                                   //OpenSoT::Indices::range(0,2)
                                                                    );
 
         _leg_impedance_task.push_back(imp_task);
@@ -170,6 +170,11 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
         _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
         _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+        for(unsigned int i = 3; i < 6; ++i)
+        {
+            _Kc(i,i) = 40.;
+            _Dc(i,i) = 0.4;
+        }
 
         imp_task->setStiffnessDamping(_Kc, _Dc);
         imp_task->useInertiaMatrix(true);
@@ -207,12 +212,17 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                _q,
                                                               *_model,
                                                               _robot->chain("left_arm").getTipLinkName(),
-                                                              "world",
-                                                               OpenSoT::Indices::range(0,2)
+                                                              "world"//,
+                                                               //OpenSoT::Indices::range(0,2)
                                                               );
     
     _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
     _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+    for(unsigned int i = 3; i < 6; ++i)
+    {
+        _Kc(i,i) = 40.;
+        _Dc(i,i) = 0.4;
+    }
     
     _ee_task_left->setStiffnessDamping(_Kc, _Dc);
     _ee_task_left->useInertiaMatrix(true);
@@ -222,12 +232,17 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                 _q,
                                                                 *_model,
                                                                 _robot->chain("right_arm").getTipLinkName(),
-                                                                "world",
-                                                                 OpenSoT::Indices::range(0,2)
+                                                                "world"//,
+                                                                 //OpenSoT::Indices::range(0,2)
                                                                 );
     
     _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
     _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+    for(unsigned int i = 3; i < 6; ++i)
+    {
+        _Kc(i,i) = 40;
+        _Dc(i,i) = 0.4;
+    }
     
     _ee_task_right->setStiffnessDamping(_Kc, _Dc);
     _ee_task_right->useInertiaMatrix(true);
@@ -247,11 +262,19 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 //     _autostack<<_torque_limits;
 
 
-    _solver = boost::make_shared<iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
+    _solver = boost::make_shared<iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.);
     _solver->log(_matlogger);
 
 
     _force_opt = boost::make_shared<ForceOptimization>(_model, links_in_contact);
+
+
+    YAML::Node yaml_file = YAML::LoadFile(handle->getPathToConfigFile());
+    XBot::Cartesian::ProblemDescription ik_problem(yaml_file["CartesianInterface"]["problem_description"], _model);
+    _ci = std::make_shared<XBot::Cartesian::CartesianInterfaceImpl>(_model, ik_problem);
+
+    _sync_from_nrt = std::make_shared<XBot::Cartesian::Utils::SyncFromIO>("/xbotcore/cartesian_interface", handle->getSharedMemory());
+
 
     return true;
 }
@@ -262,6 +285,9 @@ void QPPVMPlugin::QPPVMControl(const double time)
      _tau_min = _tau_min_const - _h;
      _torque_limits->setTorqueLimits(_tau_max, _tau_min);
 
+     Eigen::Affine3d ref;
+     _ci->getPoseReference(_robot->chain("left_arm").getTipLinkName(), ref);
+     _ee_task_left->setReference(ref.matrix());
 
      _autostack->update(_q);
      _autostack->log(_matlogger);
@@ -285,6 +311,8 @@ void QPPVMPlugin::QPPVMControl(const double time)
 void QPPVMPlugin::on_start(double time)
 {
     sense();
+
+    _first_sync_done = false;
 
     _start_time = time;
     
@@ -323,12 +351,25 @@ void QPPVMPlugin::on_start(double time)
 
      _autostack->update(_q);
     
-
+    _ci->reset(time);
 }
 
 
 void QPPVMPlugin::control_loop(double time, double period)
 {
+    if(!_first_sync_done)
+    {
+        if(_sync_from_nrt->try_reset(_model, time))
+        {
+            _first_sync_done = true;
+            XBot::Logger::info(Logger::Severity::HIGH, "Resetting NRT CI \n");
+        }
+    }
+
+    if(_first_sync_done)
+    {
+        _sync_from_nrt->try_sync(time, period, _ci, _model);
+    }
 
     sense();
     
