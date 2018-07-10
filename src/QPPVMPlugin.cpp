@@ -181,29 +181,37 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
     }
 
+    std::vector<unsigned int> waist_dofs;
+    waist_dofs.push_back(0);
+    waist_dofs.push_back(1);
+    waist_dofs.push_back(3);
+    waist_dofs.push_back(4);
+    waist_dofs.push_back(5);
     _waist = boost::make_shared<CartesianImpedanceTask>("WAIST_CART_IMP",
                                                             _q,
                                                            *_model,
                                                            "Waist",
-                                                           "world");
+                                                           "world"
+                                                        , OpenSoT::Indices(waist_dofs)
+                                                        );
     Eigen::MatrixXd _Kw(6,6); _Kw.setIdentity(6,6);
     Eigen::MatrixXd _Dw(6,6); _Dw.setIdentity(6,6);
 
     double k_waist = 500;
     
-    _Kw(0,0) = k_waist;
-    _Kw(1,1) = k_waist;
-    _Kw(2,2) = k_waist;
-    _Kw(3,3) = 0.5*k_waist;
-    _Kw(4,4) = 0.5*k_waist;
-    _Kw(5,5) = 0.5*k_waist;
+    _Kw(0,0) = 1000.;//k_waist;
+    _Kw(1,1) = 1000.;//k_waist;
+    _Kw(2,2) = 1000.;//k_waist;
+    //_Kw(3,3) = 1000.;//0.5*k_waist;
+    _Kw(4,4) = 1000.;//0.5*k_waist;
+    _Kw(5,5) = 1000.;//0.5*k_waist;
 
-    _Dw(0,0) = 200.;
-    _Dw(1,1) = 200.;
-    _Dw(2,2) = 200.;
-    _Dw(3,3) = 50.;
-    _Dw(4,4) = 50.;
-    _Dw(5,5) = 50.;
+    _Dw(0,0) = 400.;//200.;
+    _Dw(1,1) = 400.;//200.;
+    _Dw(2,2) = 400.;//200.;
+    //_Dw(3,3) = 400.;//50.;
+    _Dw(4,4) = 400.;//50.;
+    _Dw(5,5) = 400.;//50.;
 
     _waist->setStiffnessDamping(_Kw, _Dw);
       
@@ -289,6 +297,9 @@ void QPPVMPlugin::QPPVMControl(const double time)
      _ci->getPoseReference(_robot->chain("left_arm").getTipLinkName(), ref);
      _ee_task_left->setReference(ref.matrix());
 
+     _ci->getPoseReference(_robot->chain("right_arm").getTipLinkName(), ref);
+     _ee_task_right->setReference(ref.matrix());
+
      _autostack->update(_q);
      _autostack->log(_matlogger);
 
@@ -372,6 +383,8 @@ void QPPVMPlugin::control_loop(double time, double period)
     }
 
     sense();
+
+    _ci->update(time, period);
     
     QPPVMControl(time);
 
