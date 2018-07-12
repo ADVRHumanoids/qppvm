@@ -71,8 +71,28 @@ class Down(smach.State):
         l_pose_final = self.tf.transformPose("/ci/world_odom", l_pose_final)
         r_pose_final = self.tf.transformPose("/ci/world_odom", r_pose_final)
         
-        robot.lhand_go_to(l_pose_final.pose, 6.0)
-        robot.rhand_go_to(r_pose_final.pose, 6.0)
+        robot.lhand_go_to(l_pose_final.pose, 4.0)
+        robot.rhand_go_to(r_pose_final.pose, 4.0)
+        robot.lhand_wait_for_result()
+        robot.rhand_wait_for_result()
+        
+        return 'success'
+        
+class Down2(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success'])
+        self.tf = TransformListener()
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state DOWN2')
+        
+        global l_pose_final
+        l_pose_final.pose.position.z -= 0.3
+        global r_pose_final
+        r_pose_final.pose.position.z -= 0.3
+        robot.lhand_go_to(l_pose_final.pose, 3.0)
+        robot.rhand_go_to(r_pose_final.pose, 3.0)
+    
         robot.lhand_wait_for_result()
         robot.rhand_wait_for_result()
         
@@ -88,9 +108,9 @@ class Closing(smach.State):
         rospy.loginfo('Executing state CLOSING')
         
         global l_pose_final
-        l_pose_final.pose.position.y -= 0.15
+        l_pose_final.pose.position.y -= 0.22
         global r_pose_final
-        r_pose_final.pose.position.y += 0.15
+        r_pose_final.pose.position.y += 0.22
         robot.lhand_go_to(l_pose_final.pose, 2.0)
         robot.rhand_go_to(r_pose_final.pose, 2.0)
         
@@ -240,6 +260,10 @@ def main():
         with sm_down:
 
             smach.StateMachine.add('DOWN', Down(), 
+                                   transitions={'success':'DOWN2'}, 
+                                   remapping={'box_pos_output':'box_z_offset'})
+                                   
+            smach.StateMachine.add('DOWN2', Down2(), 
                                    transitions={'success':'CLOSING'}, 
                                    remapping={'box_pos_output':'box_z_offset'})
                                    

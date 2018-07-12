@@ -202,16 +202,16 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _Kw(0,0) = 1000.;//k_waist;
     _Kw(1,1) = 1000.;//k_waist;
     _Kw(2,2) = 1000.;//k_waist;
-    //_Kw(3,3) = 1000.;//0.5*k_waist;
+    _Kw(3,3) = 1000.;//0.5*k_waist;
     _Kw(4,4) = 1000.;//0.5*k_waist;
     _Kw(5,5) = 1000.;//0.5*k_waist;
 
-    _Dw(0,0) = 400.;//200.;
-    _Dw(1,1) = 400.;//200.;
-    _Dw(2,2) = 400.;//200.;
-    //_Dw(3,3) = 400.;//50.;
-    _Dw(4,4) = 400.;//50.;
-    _Dw(5,5) = 400.;//50.;
+    _Dw(0,0) = 40.;//200.;
+    _Dw(1,1) = 40.;//200.;
+    _Dw(2,2) = 40.;//200.;
+    _Dw(3,3) = 40.;//50.;
+    _Dw(4,4) = 40.;//50.;
+    _Dw(5,5) = 40.;//50.;
 
     _waist->setStiffnessDamping(_Kw, _Dw);
       
@@ -224,12 +224,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                //OpenSoT::Indices::range(0,2)
                                                               );
     
-    _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+    _Kc.setIdentity(6,6); _Kc = 1000.*_Kc;
     _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
     for(unsigned int i = 3; i < 6; ++i)
     {
-        _Kc(i,i) = 40.;
-        _Dc(i,i) = 0.4;
+        _Kc(i,i) = 100.;
+        _Dc(i,i) = 1.;
     }
     
     _ee_task_left->setStiffnessDamping(_Kc, _Dc);
@@ -244,12 +244,12 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                  //OpenSoT::Indices::range(0,2)
                                                                 );
     
-    _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+    _Kc.setIdentity(6,6); _Kc = 1000.*_Kc;
     _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
     for(unsigned int i = 3; i < 6; ++i)
     {
-        _Kc(i,i) = 40;
-        _Dc(i,i) = 0.4;
+        _Kc(i,i) = 100;
+        _Dc(i,i) = 1.;
     }
     
     _ee_task_right->setStiffnessDamping(_Kc, _Dc);

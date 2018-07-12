@@ -9,29 +9,29 @@ import geometry_msgs.msg as geomsg
 def get_down_open_lr():
     
     l_pose = geomsg.Pose()
-    l_pose.position.x = 0.30
-    l_pose.position.y = 0.35
-    l_pose.position.z = -0.45
+    l_pose.position.x = 0.35
+    l_pose.position.y = 0.4
+    l_pose.position.z = -0.25
     l_pose.orientation.x = 0.0
-    l_pose.orientation.y = -0.4
+    l_pose.orientation.y = -0.7
     l_pose.orientation.z = 0.0
-    l_pose.orientation.w = 0.9
+    l_pose.orientation.w = 0.7
     
     r_pose = geomsg.Pose()
-    r_pose.position.x = 0.30
-    r_pose.position.y = -0.35
-    r_pose.position.z = -0.45
+    r_pose.position.x = 0.35
+    r_pose.position.y = -0.4
+    r_pose.position.z = -0.25
     r_pose.orientation.x = 0.0
-    r_pose.orientation.y = -0.4
+    r_pose.orientation.y = -0.7
     r_pose.orientation.z = 0.0
-    r_pose.orientation.w = 0.9
+    r_pose.orientation.w = 0.7
     
     return (l_pose, r_pose)
     
 def get_down_close_lr():
     
     l_pose = geomsg.Pose()
-    l_pose.position.x = 0.20
+    l_pose.position.x = 0.30
     l_pose.position.y = 0.25
     l_pose.position.z = -0.6
     l_pose.orientation.x = 0.0
@@ -40,7 +40,7 @@ def get_down_close_lr():
     l_pose.orientation.w = 0.9
     
     r_pose = geomsg.Pose()
-    r_pose.position.x = 0.20
+    r_pose.position.x = 0.30
     r_pose.position.y = -0.25
     r_pose.position.z = -0.6
     r_pose.orientation.x = 0.0
