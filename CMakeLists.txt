@@ -42,7 +42,7 @@ endif()
 
 # include
 include_directories(include
-                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${CBC_INCLUDE_DIRS} ${OSICBC_INCLUDE_DIRS}
+                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${CBC_INCLUDE_DIRS} ${OSICBC_INCLUDE_DIRS} /usr/include/eigen3
                     )
 
 ###########
@@ -54,6 +54,7 @@ add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 # add_library(TorqueJump SHARED src/TorqueJump.cpp include)
 #add_executable(ModelValidationTest src/ModelValidationTest.cpp)
 add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
+add_executable(TestGLPK src/GlpkTest.cpp)
 
 if ( Xenomai_FOUND )
     set_xeno_flags(GcompFixedBase)
@@ -69,6 +70,7 @@ target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajec
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
+target_link_libraries(TestGLPK ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${CBC_LIBRARIES} ${OSICBC_LIBRARIES})
 # target_link_libraries(ExampleCBC ${XCM_LIBRARIES})
 
 #############

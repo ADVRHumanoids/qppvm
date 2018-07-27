@@ -20,9 +20,8 @@
 #include <QPPVM_RT_plugin/QPPVMPlugin.h>
 #include <qpOASES.hpp>
 #include <boost/make_shared.hpp>
-// #include <QPPVM_RT_plugin/ForceOptimization.h>
-//#include <QPPVM_RT_plugin/ForceOptimization_L1.h>
-#include <QPPVM_RT_plugin/ForceOptimization_test.h>
+// #include <QPPVM_RT_plugin/ForceOptimization_Lasso.h>
+#include <QPPVM_RT_plugin/ForceOptimization_MILP.h>
 #include <OpenSoT/constraints/force/WrenchLimits.h>
 
 
@@ -90,7 +89,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
         _cart_damping_sub.push_back(pub_d);
     }
 
-    _model->initLog(_matlogger, 30000);
+    _model->initLog(_matlogger, 1000000);
 
     _model->getEffortLimits(_tau_max_const);
     _tau_min_const = -_tau_max_const;
@@ -132,8 +131,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     Eigen::VectorXd _d_matrix(_model->getJointNum());
     _k_matrix.setZero(_k_matrix.size());
     _d_matrix.setZero(_d_matrix.size());
-    _k_matrix.segment(6,_robot->getJointNum()) = 0.1*_k;
-    _d_matrix.segment(6,_robot->getJointNum()) = 0.1*_d;
+    _k_matrix.segment(6,_robot->getJointNum()) = 0.01*_k;
+    _d_matrix.segment(6,_robot->getJointNum()) = 0.01*_d;
 
 
     std::cout<<"_d_matrix: \n"<<_d_matrix.transpose()<<std::endl;
@@ -343,7 +342,11 @@ void QPPVMPlugin::control_loop(double time, double period)
     std::vector<Eigen::VectorXd> dFopt;
     Eigen::VectorXd tau_opt;
     
-    _force_opt->compute(_tau_d,_start_time,time,period,Fopt,dFopt, tau_opt);
+    if(!_force_opt->compute(_tau_d,_start_time,time,period,Fopt,dFopt, tau_opt))
+    {
+        _force_opt->~ForceOptimization();
+        close();
+    }
 
     _matlogger->add("tau_opt", tau_opt);
     
