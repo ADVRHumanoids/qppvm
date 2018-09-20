@@ -53,7 +53,7 @@ include_directories(include
 ###########
 ## Build ##
 ###########
-add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
+#add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp)
 # add_library(ForceAccPlugin SHARED src/ForceAcc.cpp include)
 # add_library(GcompPlugin SHARED src/GcompPlugin.cpp include)
 # add_library(TorqueJump SHARED src/TorqueJump.cpp include)
@@ -61,14 +61,14 @@ add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 add_library(GcompGiusta SHARED src/GcompGiusta.cpp)
 
 if ( ${Xenomai_FOUND} AND ${ENABLE_XENO} )
-    set_xeno_flags(GcompFixedBase)
-    set_xeno_flags(QPPVMPlugin)
+    set_xeno_flags(GcompGiusta)
+    #set_xeno_flags(QPPVMPlugin)
 endif()
 
 ##########
 ## Link ##
 ##########
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES})
+#target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES})
 # target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
@@ -79,7 +79,7 @@ target_link_libraries(GcompGiusta ${XCM_LIBRARIES} ${XCM_LIBRARIES} ${OpenSoT_LI
 ## Install ##
 #############
 
-ycm_library_install(QPPVMPlugin 1 0 0)
+#ycm_library_install(QPPVMPlugin 1 0 0)
 # ycm_library_install(ForceAccPlugin 1 0 0)
 # ycm_library_install(GcompPlugin 1 0 0)
 # ycm_library_install(TorqueJump 1 0 0)
