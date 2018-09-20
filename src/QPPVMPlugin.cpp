@@ -537,7 +537,7 @@ void demo::QPPVMPlugin::sync_cartesian_ifc(double time, double period)
     
     if(!_first_sync_done)
     {
-        if(_sync_from_nrt->try_reset(_model))
+        if(_sync_from_nrt->try_reset(_model, time))
         {
             _first_sync_done = true;
             XBot::Logger::info(Logger::Severity::HIGH, "Resetting NRT CI \n");
@@ -546,7 +546,7 @@ void demo::QPPVMPlugin::sync_cartesian_ifc(double time, double period)
     
     if(_first_sync_done)
     {
-        if(_sync_from_nrt->try_sync(time, _ci, _model))
+        if(_sync_from_nrt->try_sync(time, period, _ci, _model))
         {
             _matlogger->add("sync_done", 1);
         }

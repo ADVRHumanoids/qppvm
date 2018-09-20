@@ -23,7 +23,8 @@ namespace demo {
         typedef boost::shared_ptr<ForceOptimization> Ptr;
         
         ForceOptimization(XBot::ModelInterface::Ptr model, 
-                          std::vector<std::string> contact_links
+                          std::vector<std::string> contact_links,
+                          bool optimize_torque = true
                           );
         
         bool compute(const Eigen::VectorXd& fixed_base_torque, 
@@ -58,12 +59,13 @@ namespace demo {
 
 
 demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model, 
-                                           std::vector< std::string > contact_links):
+                                           std::vector< std::string > contact_links,
+                                           bool optimize_torque):
     _model(model),
     _contact_links(contact_links)
 {
     /* Do we want to consider contact torques? */
-    const bool optimize_contact_torque = true;
+    const bool optimize_contact_torque = optimize_torque;
     
     /* Define optimization vector by stacking all contact wrenches */
     OpenSoT::OptvarHelper::VariableVector vars;
@@ -113,7 +115,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
         friction_cones.emplace_back(cl, 0.3);
     }
     
-    auto friction_constraint = boost::make_shared<OpenSoT::constraints::force::FrictionCone>(_wrenches, *_model, friction_cones);
+//     auto friction_constraint = boost::make_shared<OpenSoT::constraints::force::FrictionCone>(_wrenches, *_model, friction_cones);
     
     
     

@@ -47,7 +47,7 @@ endif()
 
 # include
 include_directories(include
-                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS}
+                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} {${cartesian_interface_INCLUDE_DIRS}
                     )
 
 ###########
@@ -58,9 +58,9 @@ add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 # add_library(GcompPlugin SHARED src/GcompPlugin.cpp include)
 # add_library(TorqueJump SHARED src/TorqueJump.cpp include)
 #add_executable(ModelValidationTest src/ModelValidationTest.cpp)
-add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
+add_library(GcompGiusta SHARED src/GcompGiusta.cpp)
 
-if ( Xenomai_FOUND AND ${ENABLE_XENO} )
+if ( ${Xenomai_FOUND} AND ${ENABLE_XENO} )
     set_xeno_flags(GcompFixedBase)
     set_xeno_flags(QPPVMPlugin)
 endif()
@@ -73,7 +73,7 @@ target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajec
 # target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
-target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
+target_link_libraries(GcompGiusta ${XCM_LIBRARIES} ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES})
 
 #############
 ## Install ##
@@ -83,6 +83,6 @@ ycm_library_install(QPPVMPlugin 1 0 0)
 # ycm_library_install(ForceAccPlugin 1 0 0)
 # ycm_library_install(GcompPlugin 1 0 0)
 # ycm_library_install(TorqueJump 1 0 0)
-ycm_library_install(GcompFixedBase 1 0 0)
+ycm_library_install(GcompGiusta 1 0 0)
 
 include(AddUninstallTarget)
