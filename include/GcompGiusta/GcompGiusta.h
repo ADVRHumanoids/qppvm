@@ -108,6 +108,17 @@ bool demo::GcompGiusta::init_control_plugin(XBot::Handle::Ptr handle)
     
     _forza_giusta = boost::make_shared<ForceOptimization>(_model, _contact_links, false);
     
+    _robot->setControlMode("left_arm", XBot::ControlMode::Position());
+    _robot->setControlMode("right_arm", XBot::ControlMode::Position());
+    _robot->setControlMode("torso", XBot::ControlMode::Position()); 
+
+    std::map<std::string, XBot::ControlMode> ctrl_map;
+    ctrl_map["j_wheel_1"] = XBot::ControlMode::Position();
+    ctrl_map["j_wheel_2"] = XBot::ControlMode::Position();
+    ctrl_map["j_wheel_3"] = XBot::ControlMode::Position();
+    ctrl_map["j_wheel_4"] = XBot::ControlMode::Position();
+    
+    _robot->setControlMode(ctrl_map);
 }
 
 void demo::GcompGiusta::on_start(double time)
