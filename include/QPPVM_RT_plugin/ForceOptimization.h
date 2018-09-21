@@ -135,7 +135,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
 //    _autostack << boost::make_shared<OpenSoT::constraints::TaskToConstraint>(_forza_giusta);
     _autostack = boost::make_shared<OpenSoT::AutoStack>(_forza_giusta);
     //_autostack<<CoP;
-    _autostack<<wrench_bounds[0]<<wrench_bounds[1];
+    _autostack<<wrench_bounds[0]<<wrench_bounds[1]<<wrench_bounds[2]<<wrench_bounds[3];
     
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.0);
     
