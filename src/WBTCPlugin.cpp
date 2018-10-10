@@ -39,8 +39,9 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
     _k_dsp.setZero(_robot->getJointNum());
     _d_dsp.setZero(_robot->getJointNum());
-    _tau.setZero(_robot->getJointNum());
-    _h.setZero(_robot->getJointNum());
+    _tau_ref.setZero(_robot->getJointNum());
+    _tau.setZero(_robot->model().getJointNum());
+    _h.setZero(_robot->model().getJointNum());
 
     _robot->getStiffness(_k_dsp);
     _robot->getDamping(_d_dsp);
@@ -71,7 +72,8 @@ void WBTCPlugin::control_loop(double time, double period)
         _robot->setStiffness(_k_dsp_ref);
         _robot->setDamping(_d_dsp_ref);
 
-        _robot->setEffortReference(_tau.tail(_robot->model().getActuatedJointNum()));
+        _tau_ref = _tau.tail(_robot->model().getActuatedJointNum());
+        _robot->setEffortReference(_tau_ref);
 
         _robot->move();
 
@@ -87,7 +89,9 @@ bool WBTCPlugin::control()
 
     _robot->model().computeNonlinearTerm(_h);
 
-    _tau += _h;
+    _tau.noalias() = _tau +  _h;
+    
+    return true;
 }
 
 void WBTCPlugin::log()

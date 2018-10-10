@@ -49,7 +49,7 @@ private:
     // To store impedance values in the dsps
     Eigen::VectorXd _k_dsp,_k_dsp_ref;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
-    Eigen::VectorXd _h, _tau;
+    Eigen::VectorXd _h, _tau, _tau_ref;
 
     //// DNAMIC RECONFIGURE TODO: PUT IT IN ANOTHER CLASS
     dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
