@@ -20,6 +20,7 @@ public:
     WBTCController(XBot::ModelInterface& model);
 
     void log(XBot::MatLogger::Ptr logger);
+
 private:
     XBot::ModelInterface& _model;
 
@@ -39,6 +40,8 @@ public:
 
     void log();
 
+    bool control();
+
 private:
     XBot::MatLogger::Ptr _matlogger;
     XBot::RobotInterface::Ptr _robot;
@@ -46,7 +49,7 @@ private:
     // To store impedance values in the dsps
     Eigen::VectorXd _k_dsp,_k_dsp_ref;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
-    Eigen::VectorXd _q, _qdot, _tau;
+    Eigen::VectorXd _h, _tau;
 
     //// DNAMIC RECONFIGURE TODO: PUT IT IN ANOTHER CLASS
     dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;

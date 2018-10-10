@@ -39,9 +39,8 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
     _k_dsp.setZero(_robot->getJointNum());
     _d_dsp.setZero(_robot->getJointNum());
-    _q.setZero(_robot->getJointNum());
-    _qdot.setZero(_robot->getJointNum());
     _tau.setZero(_robot->getJointNum());
+    _h.setZero(_robot->getJointNum());
 
     _robot->getStiffness(_k_dsp);
     _robot->getDamping(_d_dsp);
@@ -64,20 +63,37 @@ void WBTCPlugin::control_loop(double time, double period)
 {
     _robot->sense(true);
 
-    _k_dsp_ref = _impedance_gain.load() * _k_dsp;
-    _d_dsp_ref = std::sqrt(2.0) * _impedance_gain.load() * _d_dsp;
+    if(control())
+    {
+        _k_dsp_ref = _impedance_gain.load() * _k_dsp;
+        _d_dsp_ref = std::sqrt(2.0) * _impedance_gain.load() * _d_dsp;
 
-    _robot->setStiffness(_k_dsp_ref);
-    _robot->setDamping(_d_dsp_ref);
+        _robot->setStiffness(_k_dsp_ref);
+        _robot->setDamping(_d_dsp_ref);
 
-    _robot->move();
+        _robot->setEffortReference(_tau.tail(_robot->model().getActuatedJointNum()));
+
+        _robot->move();
+
+
+    }
 
     log();
+}
+
+bool WBTCPlugin::control()
+{
+    _tau.setZero(_tau.size());
+
+    _robot->model().computeNonlinearTerm(_h);
+
+    _tau += _h;
 }
 
 void WBTCPlugin::log()
 {
     _robot->log(_matlogger, XBot::get_time_ns(),"wbtc");
+    _matlogger->add("_h", _h);
 }
 
 bool WBTCPlugin::close()
