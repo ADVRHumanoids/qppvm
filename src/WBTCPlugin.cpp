@@ -41,7 +41,11 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _d_dsp.setZero(_robot->getJointNum());
     _tau_ref.setZero(_robot->getJointNum());
     _tau.setZero(_robot->model().getJointNum());
+    _tau_offset.setZero(_robot->getJointNum());
     _h.setZero(_robot->model().getJointNum());
+    
+    
+    _robot->getRobotState("torque_offset", _tau_offset);
 
     _robot->getStiffness(_k_dsp);
     _robot->getDamping(_d_dsp);
@@ -72,7 +76,7 @@ void WBTCPlugin::control_loop(double time, double period)
         _robot->setStiffness(_k_dsp_ref);
         _robot->setDamping(_d_dsp_ref);
 
-        _tau_ref = _tau.tail(_robot->model().getActuatedJointNum());
+        _tau_ref = _tau.tail(_robot->model().getActuatedJointNum()) - _tau_offset;
         _robot->setEffortReference(_tau_ref);
 
         _robot->move();
@@ -98,6 +102,7 @@ void WBTCPlugin::log()
 {
     _robot->log(_matlogger, XBot::get_time_ns(),"wbtc");
     _matlogger->add("_h", _h);
+    _matlogger->add("_tau_offset", _tau_offset);
 }
 
 bool WBTCPlugin::close()

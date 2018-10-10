@@ -3,7 +3,7 @@ XBotCore:
 
 XBotInterface:
   urdf_path: "configs/ADVR_shared/cogimon/urdf/cogimon.urdf"
-  srdf_path: "configs/ADVR_shared/cogimon/srdf/cogimon.srdf"
+  srdf_path: "external/qppvm/config/cogimon.srdf"
   joint_map_path: "configs/ADVR_shared/cogimon/joint_map/cogimon_joint_map.yaml"
 
 RobotInterface:
