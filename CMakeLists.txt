@@ -75,7 +75,7 @@ endif()
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 #target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
-target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
+target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES})
 
 #############
 ## Install ##
