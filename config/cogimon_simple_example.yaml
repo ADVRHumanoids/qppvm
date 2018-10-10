@@ -1,5 +1,5 @@
 XBotCore:
-  config_path: "configs/ADVR_shared/cogimon/configs/cogimon_impedance_low_current.yaml"
+  config_path: "configs/ADVR_shared/cogimon/configs/cogimon_impedance.yaml" # "configs/ADVR_shared/cogimon/configs/cogimon.yaml"
 
 XBotInterface:
   urdf_path: "configs/ADVR_shared/cogimon/urdf/cogimon.urdf"
@@ -17,11 +17,11 @@ MasterCommunicationInterface:
   framework_name: "ROS"
 
 XBotRTPlugins:
-  plugins: ["HomingExample", "QPPVMPlugin"] #, "XBotRTCommunication"] 
-  io_plugins: ["CartesianIO"]
+  plugins: ["HomingExample"] #, "QPPVMPlugin"] #, "XBotRTCommunication"] 
+  io_plugins: [] #["CartesianIO"]
   
 NRTPlugins:
-  plugins: [] #"HomingExample"]
+  plugins: []  #"HomingExample"]
   
 TransmissionPlugins:
   plugins: ["CogimonImpedanceAnkles"] #CogimonImpedanceAnkles CogimonAnkles
@@ -34,14 +34,4 @@ WebServer:
 SimulationOptions:
   verbose_mode: "false"
 
-CartesianInterface:
-  solver: "OpenSot"
-  problem_description:
-    stack:
-      - ["Waist"]
-    constraints: []
-
-    Waist:
-      type: "Cartesian"
-      distal_link: "Waist"
 

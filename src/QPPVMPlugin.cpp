@@ -70,6 +70,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                      &QPPVMPlugin::feedback_gain_callback, this);
     
     _fb_pub = handle->getRosHandle()->advertise<geometry_msgs::Pose>("/qppvm/floating_base", 1);
+    _waist_error_pub = handle->getRosHandle()->advertise<geometry_msgs::Twist>("/qppvm/waist_pose_error", 1);
 
 
 
@@ -82,7 +83,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 //    _model = XBot::ModelInterface::getModel("external/qppvm/config/floating_base/centauro_simple_example.yaml");
 //     _model = XBot::ModelInterface::getModel("configs/ADVR_shared/user_example/centauro_simple_example.yaml");
     _model = XBot::ModelInterface::getModel(handle->getPathToConfigFile());
-    
+    _model->getRobotState("torque_offset", _tau_offset);
     
     
     
@@ -186,8 +187,8 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                     _q,
                                                                    *_model,
                                                                    _robot->leg(i).getTipLinkName(),
-                                                                   "world",
-                                                                   OpenSoT::Indices::range(0,2)
+                                                                   "world"/**,
+                                                                   OpenSoT::Indices::range(0,2)**/
                                                                    );
 
         _leg_impedance_task.push_back(imp_task);
@@ -268,9 +269,9 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
 
 //     _autostack =  ( (legs_impedance_aggr + ee_impedance_aggr) / ( _joint_task) ) << _torque_limits;
     
-//      _autostack =  ( legs_impedance_aggr / _waist /ee_impedance_aggr /  _joint_task ) << _torque_limits;
+     _autostack =  ( legs_impedance_aggr / _waist /  _joint_task ) << _torque_limits;
     
-    _autostack =  ( legs_impedance_aggr / _waist /  _joint_task ) << _torque_limits;
+//     _autostack =  ( _leg_impedance_task[0] /  _joint_task ) << _torque_limits;
         
 //    _autostack =  ( legs_impedance_aggr /  _joint_task ) << _torque_limits;
 
@@ -290,6 +291,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _stiffness_Feet_gain.store(0.0);
     _damping_Feet_gain.store(0.0);
     _joints_gain.store(0.0);
+    _weight_offset.store(0.0);
 
 
     /* Init cartesian ifc */
@@ -318,6 +320,8 @@ void QPPVMPlugin::QPPVMControl(const double time)
         _tau_d.setZero(_tau_d.size());
         XBot::Logger::error("Unable to solve \n");
     }
+    
+    _tau_d[2] += _weight_offset.load()*9.81;
 
     _solver->log(_matlogger);
 
@@ -340,12 +344,16 @@ void demo::QPPVMPlugin::set_gains()
     double current_damping_Feet_gain = _damping_Feet_gain.load();
     double current_joint_gain = _joints_gain.load();
     _Kc.setIdentity(6,6); _Dc.setIdentity(6,6);
+    _Kc.diagonal() << 1.,1.,1.,0.1,0.1,0.1;
+    _Dc.diagonal() << 1.,1.,1.,0.1,0.1,0.1;
     _Dc *= current_damping_Waist_gain;
     _Kc *= current_stiffness_Waist_gain;
     
     _waist->setStiffnessDamping(_Kc, _Dc);
     
     _Kc.setIdentity(6,6); _Dc.setIdentity(6,6);
+    _Kc.diagonal() << 1.,1.,1.,0.1,0.1,0.1;
+    _Dc.diagonal() << 1.,1.,1.,0.1,0.1,0.1;
     _Dc *= current_damping_Feet_gain;
     _Kc *= current_stiffness_Feet_gain;
     
@@ -353,6 +361,8 @@ void demo::QPPVMPlugin::set_gains()
     {
         imptask->setStiffnessDamping(_Kc, _Dc);
     }
+    
+    _ee_task_left->setStiffnessDamping(_Kc, _Dc);
     
     _Kj.setIdentity(_model->getJointNum(),_model->getJointNum()); _Dj.setIdentity(_model->getJointNum(),_model->getJointNum());
     _Kj = _Kj * 100. * current_joint_gain;
@@ -364,10 +374,12 @@ void demo::QPPVMPlugin::set_gains()
 void QPPVMPlugin::on_start(double time)
 {
     _first_sync_done = false;
-    
+
     _robot->setControlMode("torso", XBot::ControlMode::Idle());
+    
     _robot->setControlMode("left_arm", XBot::ControlMode::Idle());
     _robot->setControlMode("right_arm", XBot::ControlMode::Idle());
+    
     _robot->setControlMode("neck", XBot::ControlMode::Idle());
     
     
@@ -425,6 +437,8 @@ void QPPVMPlugin::control_loop(double time, double period)
     QPPVMControl(time);
     
     _force_opt->compute(_tau_d, _Fopt, _tau_opt);
+    //_tau_opt += _tau_offset;
+//     _tau_opt = _tau_d;
 
     _matlogger->add("tau_opt", _tau_opt);
     
@@ -480,6 +494,15 @@ void QPPVMPlugin::sense(const double period)
     _model->getFloatingBasePose(T);
     tf::poseEigenToMsg(T, pose_msg);
     _fb_pub->pushToQueue(pose_msg);
+    
+    geometry_msgs::Twist twist_msg;
+    twist_msg.linear.x = _waist->positionError[0];
+    twist_msg.linear.y = _waist->positionError[1];
+    twist_msg.linear.z = _waist->positionError[2];
+    twist_msg.angular.x = _waist->orientationError[0];
+    twist_msg.angular.y = _waist->orientationError[1];
+    twist_msg.angular.z = _waist->orientationError[2];
+    _waist_error_pub->pushToQueue(twist_msg);
 }
 
 
@@ -546,7 +569,7 @@ void demo::QPPVMPlugin::sync_cartesian_ifc(double time, double period)
     
     if(_first_sync_done)
     {
-        if(_sync_from_nrt->try_sync(time, _ci, _model))
+        if(_sync_from_nrt->try_sync(time, period, _ci, _model))
         {
             _matlogger->add("sync_done", 1);
         }
@@ -567,7 +590,15 @@ void demo::QPPVMPlugin::sync_cartesian_ifc(double time, double period)
     /* Update qppvm references */
     Eigen::Affine3d T_ref;
     _ci->getPoseReference(_waist->getDistalLink(), T_ref);
-    _waist->setReference(T_ref.matrix());
+    
+    _T_matrix = T_ref.matrix();
+    _waist->setReference(_T_matrix);
+    
+    
+    _ci->getPoseReference(_leg_impedance_task[0]->getDistalLink(), T_ref);
+    
+    _T_matrix = T_ref.matrix();
+    _leg_impedance_task[0]->setReference(_T_matrix);
 }
 
 void demo::QPPVMPlugin::impedance_gain_callback(const std_msgs::Float64ConstPtr& msg)
@@ -604,8 +635,10 @@ void demo::QPPVMPlugin::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint3
     _stiffness_Feet_gain.store(config.stiffness_feet);
     _damping_Feet_gain.store(config.damping_feet);
     _joints_gain.store(config.joints_gain);
+    _weight_offset.store(config.weight_offset);
     
-    Logger::info(Logger::Severity::HIGH, "\nSetting impedance gain to %f \n", config.impedance_gain);
+    Logger::info(Logger::Severity::HIGH, "Setting weight_offset to %f [Kg] \n", config.weight_offset);
+    Logger::info(Logger::Severity::HIGH, "Setting impedance gain to %f \n", config.impedance_gain);
     Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_gain);
     Logger::info(Logger::Severity::HIGH, "Setting waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
     Logger::info(Logger::Severity::HIGH, "Setting feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);

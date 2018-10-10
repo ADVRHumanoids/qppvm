@@ -70,12 +70,13 @@ namespace demo {
         void feedback_gain_callback(const std_msgs::Float64ConstPtr& msg);
         void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
         std::atomic<double> _impedance_gain, _stiffness_Waist_gain, _damping_Waist_gain, _joints_gain,
-        _stiffness_Feet_gain, _damping_Feet_gain;
+        _stiffness_Feet_gain, _damping_Feet_gain, _weight_offset;
         
         dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
 
         std::vector<XBot::RosUtils::SubscriberWrapper::Ptr> _cart_stiffness_sub, _cart_damping_sub;
         XBot::RosUtils::PublisherWrapper::Ptr _fb_pub;
+        XBot::RosUtils::PublisherWrapper::Ptr _waist_error_pub;
         XBot::RosUtils::SubscriberWrapper::Ptr _impedance_gain_sub, _feedback_gain_sub;
         
         std::vector<Eigen::Vector6d> _Fopt;
@@ -112,18 +113,19 @@ namespace demo {
         Eigen::VectorXd _k, _k_ref;
         Eigen::VectorXd _d, _d_ref;
 
-        Eigen::VectorXd _tau_d, _tau_offset;
+        Eigen::VectorXd _tau_d;
         Eigen::VectorXd _h;
 
         Eigen::VectorXd _tau_max;
         Eigen::VectorXd _tau_min;
         Eigen::VectorXd _tau_max_const;
         Eigen::VectorXd _tau_min_const;
+        Eigen::VectorXd _tau_offset;
 
         Eigen::VectorXd _q_max;
         Eigen::VectorXd _q_min;
 
-        Eigen::MatrixXd _Kc, _Dc, _Kj, _Dj; 
+        Eigen::MatrixXd _Kc, _Dc, _Kj, _Dj, _T_matrix; 
 
         bool _homing_done;
 
