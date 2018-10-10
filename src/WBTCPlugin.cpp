@@ -83,6 +83,7 @@ void WBTCPlugin::log()
 bool WBTCPlugin::close()
 {
     _matlogger->flush();
+    return true;
 }
 
 void WBTCPlugin::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)

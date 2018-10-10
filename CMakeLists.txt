@@ -16,6 +16,7 @@ include(MacroYCMInstallLibrary)
 find_package(XCM REQUIRED)
 find_package(cartesian_interface REQUIRED)
 find_package(OpenSoT REQUIRED)
+find_package(dynamic_reconfigure_advr REQUIRED)
 
 #add dynamic reconfigure api
 find_package(catkin REQUIRED dynamic_reconfigure)
@@ -45,7 +46,7 @@ endif()
 
 # include
 include_directories(include
-                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS}
+                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${dynamic_reconfigure_advr_INCLUDE_DIRS}
                     )
 
 ###########
