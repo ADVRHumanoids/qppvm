@@ -80,11 +80,11 @@ target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${traject
 ## Install ##
 #############
 
-ycm_library_install(QPPVMPlugin 1 0 0)
+#ycm_library_install(QPPVMPlugin 1 0 0)
 # ycm_library_install(ForceAccPlugin 1 0 0)
 # ycm_library_install(GcompPlugin 1 0 0)
 # ycm_library_install(TorqueJump 1 0 0)
-ycm_library_install(GcompFixedBase 1 0 0)
+#ycm_library_install(GcompFixedBase 1 0 0)
 ycm_library_install(WBTCPlugin 1 0 0)
 
 include(AddUninstallTarget)

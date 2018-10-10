@@ -9,6 +9,11 @@
 
 #include <XBotInterface/Logger.hpp>
 
+#include <dynamic_reconfigure_advr/server.h>
+#include <QPPVM_RT_plugin/QppvmConfig.h>
+
+#include<atomic>
+
 namespace opensot{
 class WBTCController{
 public:
@@ -32,11 +37,21 @@ public:
     virtual void control_loop(double time, double period);
     virtual bool close();
 
+    void log();
+
 private:
     XBot::MatLogger::Ptr _matlogger;
     XBot::RobotInterface::Ptr _robot;
 
-    Eigen::VectorXd _q, _qdot;
+    // To store impedance values in the dsps
+    Eigen::VectorXd _k_dsp,_k_dsp_ref;
+    Eigen::VectorXd _d_dsp, _d_dsp_ref;
+    Eigen::VectorXd _q, _qdot, _tau;
+
+    //// DNAMIC RECONFIGURE TODO: PUT IT IN ANOTHER CLASS
+    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
+    void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
+    std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
 
 };
 }
