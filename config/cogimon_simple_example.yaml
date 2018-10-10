@@ -1,5 +1,5 @@
 XBotCore:
-  config_path: "configs/ADVR_shared/cogimon/configs/cogimon_impedance_low_current.yaml"
+  config_path: "configs/ADVR_shared/cogimon/configs/cogimon_impedance.yaml"
 
 XBotInterface:
   urdf_path: "configs/ADVR_shared/cogimon/urdf/cogimon.urdf"
@@ -17,7 +17,7 @@ MasterCommunicationInterface:
   framework_name: "ROS"
 
 XBotRTPlugins:
-  plugins: ["HomingExample", "QPPVMPlugin"] #, "XBotRTCommunication"] 
+  plugins: ["HomingExample", "WBTCPlugin"] #"QPPVMPlugin"] #, "XBotRTCommunication"] 
   io_plugins: ["CartesianIO"]
   
 NRTPlugins:
