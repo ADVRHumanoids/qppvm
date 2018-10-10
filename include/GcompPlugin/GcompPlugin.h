@@ -17,27 +17,25 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef ForceAccExample_PLUGIN_H_
-#define ForceAccExample_PLUGIN_H_
+#ifndef _GCOMP_PLUGIN_H_
+#define _GCOMP_PLUGIN_H_
 
+#include <std_msgs/Float64.h>
 #include <XCM/XBotControlPlugin.h>
 #include <OpenSoT/tasks/acceleration/Postural.h>
 #include <OpenSoT/tasks/acceleration/Cartesian.h>
 #include <OpenSoT/constraints/acceleration/DynamicFeasibility.h>
 #include <OpenSoT/tasks/force/CoM.h>
 #include <OpenSoT/utils/AutoStack.h>
-
-#include <ForceAccPlugin/FloatingBaseEstimation.h>
-
-#include <std_msgs/Float64.h>
+#include <atomic>
 
 namespace XBotPlugin {
 
 /**
- * @brief ForceAccExample XBot RT Plugin
+ * @brief GcompPlugin XBot RT Plugin
  *
  **/
-class ForceAccExample : public XBot::XBotControlPlugin
+class GcompPlugin : public XBot::XBotControlPlugin
 {
 
 public:
@@ -50,7 +48,7 @@ public:
 
     virtual void on_stop(double time){}
 
-    virtual ~ForceAccExample(){}
+    virtual ~GcompPlugin(){}
 
 protected:
 
@@ -58,18 +56,29 @@ protected:
 
 private:
 
-    void orientation_gain_callback(const std_msgs::Float64ConstPtr& msg);
-    void waist_gain_callback(const std_msgs::Float64ConstPtr& msg);
-    void impedance_gain_callback(const std_msgs::Float64ConstPtr& msg);
+    void sync_model();
 
-    void sync_model(double period);
+    void callback_impedance(const std_msgs::Float64ConstPtr& msg)
+    {
+        int data = msg->data;
+        data = data > 0 ? data : 0;
+        data = data < 100 ? data : 100;
 
-    XBot::RosUtils::SubscriberWrapper::Ptr _or_gain_sub, _waist_gain_sub, _impedance_gain_sub;
-    XBot::RosUtils::PublisherWrapper::Ptr _zworld_pub, _twist_pub;
-    std::atomic<double> _waist_or_gain, _waist_gain, _impedance_gain;
+        _impedance_coeff.store(data);
+    }
+    
+    void callback_postural(const std_msgs::Float64ConstPtr& msg)
+    {
+        int data = msg->data;
+        data = data > 0 ? data : 0;
 
+        _postural_gain.store(data);
+    }
+
+    XBot::Handle::Ptr _xbot_handle;
+    
     XBot::RobotInterface::Ptr _robot;
-    XBot::ModelInterface::Ptr _model, _model_fbest;
+    XBot::ModelInterface::Ptr _model;
     XBot::ImuSensor::ConstPtr _imu;
 
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
@@ -77,7 +86,7 @@ private:
 
     double _start_time;
 
-    Eigen::VectorXd _q0, _k, _d, _k0, _d0, _qhome;
+    Eigen::VectorXd _q0, _k0, _d0, _k, _d;
     Eigen::Vector3d _initial_com;
 
     XBot::MatLogger::Ptr _logger;
@@ -94,10 +103,14 @@ private:
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
 
-    estimation::FloatingBaseEstimator::Ptr _fb_estimator;
-
     OpenSoT::AutoStack::Ptr _autostack;
     OpenSoT::solvers::QPOases_sot::Ptr _solver;
+    
+    XBot::JointIdMap _q_ref_map, _qdot_ref_map;
+    Eigen::VectorXd _q_ref, _qdot_ref, _qddot_ref;
+
+    std::atomic_int _impedance_coeff, _postural_gain;
+    XBot::RosUtils::SubscriberWrapper::Ptr _sub_impedance, _sub_postural;
 
 };
 
@@ -108,4 +121,4 @@ private:
 
 
 
-#endif // ForceAccExample_PLUGIN_H_
+#endif // _GCOMP_PLUGIN_H_

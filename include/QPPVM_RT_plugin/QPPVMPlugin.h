@@ -21,16 +21,27 @@
 #define __QPPVM_PLUGIN_H__
 
 #include <XCM/XBotControlPlugin.h>
-#include <OpenSoT/solvers/QPOases.h>
+#include <OpenSoT/solvers/iHQP.h>
+#include <OpenSoT/solvers/BackEndFactory.h>
 #include <OpenSoT/tasks/torque/CartesianImpedanceCtrl.h>
 #include <OpenSoT/tasks/torque/JointImpedanceCtrl.h>
 #include <OpenSoT/constraints/torque/TorqueLimits.h>
 #include <OpenSoT/constraints/torque/JointLimits.h>
 #include <OpenSoT/utils/AutoStack.h>
 #include <OpenSoT/SubTask.h>
-
+#include <geometry_msgs/Twist.h>
+#include <OpenSoT/tasks/force/CoM.h>
+#include <QPPVM_RT_plugin/ForceOptimization.h>
+#include <ForceAccPlugin/FloatingBaseEstimation.h>
+#include <std_msgs/Float64.h>
 
 #include <XBotInterface/Logger.hpp>
+#include <atomic>
+
+#include <dynamic_reconfigure_advr/server.h>
+#include <QPPVM_RT_plugin/QppvmConfig.h>
+
+#include <cartesian_interface/CartesianPlugin/Utils.h>
 
 namespace demo {
 
@@ -49,10 +60,31 @@ namespace demo {
 
     private:
 
+        typedef OpenSoT::tasks::torque::CartesianImpedanceCtrl CartesianImpedanceTask;
+        
+        void set_gains();
+
+        void cart_stiffness_callback(const geometry_msgs::TwistConstPtr& msg, int id);
+        void cart_damping_callback(const geometry_msgs::TwistConstPtr& msg, int id);
+        void impedance_gain_callback(const std_msgs::Float64ConstPtr& msg);
+        void feedback_gain_callback(const std_msgs::Float64ConstPtr& msg);
+        void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
+        std::atomic<double> _impedance_gain, _stiffness_Waist_gain, _damping_Waist_gain, _joints_gain,
+        _stiffness_Feet_gain, _damping_Feet_gain;
+        
+        dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
+
+        std::vector<XBot::RosUtils::SubscriberWrapper::Ptr> _cart_stiffness_sub, _cart_damping_sub;
+        XBot::RosUtils::PublisherWrapper::Ptr _fb_pub;
+        XBot::RosUtils::SubscriberWrapper::Ptr _impedance_gain_sub, _feedback_gain_sub;
+        
+        std::vector<Eigen::Vector6d> _Fopt;
+        Eigen::VectorXd _tau_opt;
+
         double _start_time;
-        
+
         bool _set_ref;
-        
+
         void syncFromMotorSide(XBot::RobotInterface::Ptr robot, XBot::ModelInterface::Ptr model);
         XBot::JointIdMap _jidmap;
 
@@ -61,13 +93,13 @@ namespace demo {
 
         XBot::MatLogger::Ptr _matlogger;
 
-        OpenSoT::solvers::QPOases_sot::Ptr _solver;
+        OpenSoT::solvers::iHQP::Ptr _solver;
 
         OpenSoT::constraints::torque::TorqueLimits::Ptr _torque_limits;
         OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr _joint_task;
-        OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _ee_task_right, _ee_task_left;
-        OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr _elbow_task_right, _elbow_task_left;
+        std::vector<CartesianImpedanceTask::Ptr> _leg_impedance_task;
         OpenSoT::constraints::torque::JointLimits::Ptr _joint_limits;
+        CartesianImpedanceTask::Ptr _waist,_ee_task_left,_ee_task_right;
 
         OpenSoT::AutoStack::Ptr _autostack;
 
@@ -77,10 +109,10 @@ namespace demo {
         Eigen::VectorXd _q_ref, _q0;
         Eigen::VectorXd _q_home;
 
-        Eigen::VectorXd _k;
-        Eigen::VectorXd _d;
+        Eigen::VectorXd _k, _k_ref;
+        Eigen::VectorXd _d, _d_ref;
 
-        Eigen::VectorXd _tau_d;
+        Eigen::VectorXd _tau_d, _tau_offset;
         Eigen::VectorXd _h;
 
         Eigen::VectorXd _tau_max;
@@ -91,19 +123,54 @@ namespace demo {
         Eigen::VectorXd _q_max;
         Eigen::VectorXd _q_min;
 
+        Eigen::MatrixXd _Kc, _Dc, _Kj, _Dj; 
+
         bool _homing_done;
 
         double _homing_time;
-        
+
         KDL::Frame _start_pose;
         KDL::Frame _ref;
-        
 
-        void sense();
+
+        XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
+        XBot::SharedObject<Eigen::Quaterniond> _sh_fb_rot;
+        XBot::SharedObject<Eigen::Vector6d> _sh_fb_vel;
+
+
+         Eigen::VectorXd tau_f1;
+         Eigen::VectorXd tau_f2;
+         Eigen::VectorXd tau_f3;
+         Eigen::VectorXd tau_f4;
+         
+         Eigen::Vector3d com0;
+         
+         ForceOptimization::Ptr _force_opt;
+
+        void sense(const double period);
+        
+        void sync_cartesian_ifc(double time, double period);
 
         void QPPVMControl(const double time);
+        
+        estimation::FloatingBaseEstimator::Ptr _fb_estimator;
+        XBot::ImuSensor::ConstPtr _imu;
+        std::vector<std::string> _contact_links;
+        
+        /* Cartesian ifc variables */
+        XBot::Cartesian::CartesianInterfaceImpl::Ptr _ci;
+        XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
+        bool _first_sync_done;
 
     };
 
 }
 #endif
+
+
+
+
+
+
+
+
