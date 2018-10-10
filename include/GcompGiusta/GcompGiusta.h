@@ -88,7 +88,7 @@ namespace demo {
 
 bool demo::GcompGiusta::init_control_plugin(XBot::Handle::Ptr handle)
 {
-    _contact_links = {"wheel_1", "wheel_2", "wheel_3", "wheel_4"};
+    _contact_links = {"l_sole", "r_sole"};
     
     dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
     f = boost::bind(&GcompGiusta::cfg_callback, this, _1, _2);
@@ -100,13 +100,17 @@ bool demo::GcompGiusta::init_control_plugin(XBot::Handle::Ptr handle)
     _imu = _robot->getImu().begin()->second;
     
     _model = XBot::ModelInterface::getModel(handle->getPathToConfigFile());
+	Eigen::VectorXd qhome;
+	_model->getRobotState("home", qhome);
+	_model->setJointPosition(qhome);
+	_model->update();
     _model->computeGravityCompensation(_gcomp);
     _tau_d = _gcomp;
     
     _robot->getStiffness(_k0);
     _k = _k0;
     
-    _forza_giusta = boost::make_shared<ForceOptimization>(_model, _contact_links, false);
+    _forza_giusta = boost::make_shared<ForceOptimization>(_model, _contact_links, true);
     
     _robot->setControlMode("left_arm", XBot::ControlMode::Position());
     _robot->setControlMode("right_arm", XBot::ControlMode::Position());
@@ -133,8 +137,8 @@ void demo::GcompGiusta::control_loop(double time, double period)
 
     
     _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::MotorSide);
-    _model->setFloatingBaseState(_imu);
-    _model->update();
+    // _model->setFloatingBaseState(_imu);
+    // _model->update();
     
     _model->computeGravityCompensation(_gcomp);
     

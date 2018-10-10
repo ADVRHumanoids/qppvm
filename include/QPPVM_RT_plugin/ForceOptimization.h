@@ -78,8 +78,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     /* Wrench bounds */
     Eigen::VectorXd wrench_ub(6), wrench_lb(6);
-    wrench_ub << 1000, 1000, 1000, 50, 50, 50;
-    wrench_lb << -1000, -1000, 0, -50, -50, -50;
+    wrench_ub << 1000, 1000, 1000, 500, 500, 500;
+    wrench_lb << -1000, -1000, 0, -500, -500, -500;
 
     std::vector<OpenSoT::constraints::GenericConstraint::Ptr> wrench_bounds;
     std::list<OpenSoT::solvers::iHQP::TaskPtr> min_wrench_tasks;
