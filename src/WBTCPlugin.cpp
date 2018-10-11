@@ -7,12 +7,24 @@ namespace opensot{
 WBTCController::WBTCController(XBot::ModelInterface &model):
     _model(model)
 {
-
+    _h.setZero(_model.getJointNum());
 }
+
+bool WBTCController::control(Eigen::VectorXd& tau)
+{
+    tau.setZero(tau.size());
+
+    _model.computeNonlinearTerm(_h);
+
+    tau.noalias() = tau +  _h;
+
+    return true;
+}
+
 
 void WBTCController::log(XBot::MatLogger::Ptr logger)
 {
-
+    logger->add("_h", _h);
 }
 
 }
@@ -26,12 +38,6 @@ WBTCPlugin::WBTCPlugin()
 
 bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 {
-    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
-    f = boost::bind(&WBTCPlugin::cfg_callback, this, _1, _2);
-    _server.setCallback(f);
-    _impedance_gain.store(1.0);
-
-
     _matlogger = XBot::MatLogger::getLogger("/tmp/wbtc_log");
 
     _robot = handle->getRobotInterface();
@@ -41,9 +47,7 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _d_dsp.setZero(_robot->getJointNum());
     _tau_ref.setZero(_robot->getJointNum());
     _tau.setZero(_robot->model().getJointNum());
-    _tau_offset.setZero(_robot->getJointNum());
-    _h.setZero(_robot->model().getJointNum());
-    
+    _tau_offset.setZero(_robot->getJointNum());    
     
     _robot->getRobotState("torque_offset", _tau_offset);
 
@@ -61,6 +65,8 @@ void WBTCPlugin::on_start(double time)
 {
     _robot->sense(true);
 
+    controller = boost::make_shared<opensot::WBTCController>(_robot->model());
+
     log();
 }
 
@@ -68,10 +74,10 @@ void WBTCPlugin::control_loop(double time, double period)
 {
     _robot->sense(true);
 
-    if(control())
+    if(controller->control(_tau))
     {
-        _k_dsp_ref = _impedance_gain.load() * _k_dsp;
-        _d_dsp_ref = std::sqrt(2.0) * _impedance_gain.load() * _d_dsp;
+        _k_dsp_ref = _dynamic_reconfigure._impedance_gain.load() * _k_dsp;
+        _d_dsp_ref = std::sqrt(2.0) * _dynamic_reconfigure._impedance_gain.load() * _d_dsp;
 
         _robot->setStiffness(_k_dsp_ref);
         _robot->setDamping(_d_dsp_ref);
@@ -80,28 +86,14 @@ void WBTCPlugin::control_loop(double time, double period)
         _robot->setEffortReference(_tau_ref);
 
         _robot->move();
-
-
     }
 
     log();
 }
 
-bool WBTCPlugin::control()
-{
-    _tau.setZero(_tau.size());
-
-    _robot->model().computeNonlinearTerm(_h);
-
-    _tau.noalias() = _tau +  _h;
-    
-    return true;
-}
-
 void WBTCPlugin::log()
 {
     _robot->log(_matlogger, XBot::get_time_ns(),"wbtc");
-    _matlogger->add("_h", _h);
     _matlogger->add("_tau_offset", _tau_offset);
 }
 
@@ -111,7 +103,15 @@ bool WBTCPlugin::close()
     return true;
 }
 
-void WBTCPlugin::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
+dynamic_reconf::dynamic_reconf()
+{
+    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
+    f = boost::bind(&dynamic_reconf::cfg_callback, this, _1, _2);
+    _server.setCallback(f);
+    _impedance_gain.store(1.0);
+}
+
+void dynamic_reconf::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
 {
     _impedance_gain.store(config.impedance_gain);
 //    _stiffness_Waist_gain.store(config.stiffness_waist);

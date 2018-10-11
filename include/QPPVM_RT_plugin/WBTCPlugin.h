@@ -17,17 +17,32 @@
 namespace opensot{
 class WBTCController{
 public:
+    typedef boost::shared_ptr<WBTCController> Ptr;
+
     WBTCController(XBot::ModelInterface& model);
+
+    bool control(Eigen::VectorXd& tau);
 
     void log(XBot::MatLogger::Ptr logger);
 
 private:
     XBot::ModelInterface& _model;
+    Eigen::VectorXd _h;
 
 };
 }
 
 namespace xbotcore {
+class dynamic_reconf{
+public:
+    dynamic_reconf();
+
+    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
+    void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
+    std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
+
+};
+
 class WBTCPlugin : public XBot::XBotControlPlugin {
 
 public:
@@ -40,7 +55,7 @@ public:
 
     void log();
 
-    bool control();
+    opensot::WBTCController::Ptr controller;
 
 private:
     XBot::MatLogger::Ptr _matlogger;
@@ -49,14 +64,13 @@ private:
     // To store impedance values in the dsps
     Eigen::VectorXd _k_dsp,_k_dsp_ref;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
-    Eigen::VectorXd _h, _tau, _tau_ref, _tau_offset;
+    Eigen::VectorXd _tau, _tau_ref, _tau_offset;
 
-    //// DNAMIC RECONFIGURE TODO: PUT IT IN ANOTHER CLASS
-    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
-    void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
-    std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
+    dynamic_reconf _dynamic_reconfigure;
+
 
 };
+
 }
 
 #endif
