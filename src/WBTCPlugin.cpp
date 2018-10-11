@@ -16,12 +16,13 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
+    std::cout<<"tau_lims: "<<tau_lims<<std::endl;
     torque_lims = boost::make_shared<OpenSoT::constraints::torque::TorqueLimits>(tau_lims, -tau_lims);
 
     _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
     _autostack<<torque_lims;
 
-    _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1e1);
+    _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.);
 
 }
 
@@ -43,8 +44,8 @@ bool WBTCController::control(Eigen::VectorXd& tau)
 
 void WBTCController::log(XBot::MatLogger::Ptr logger)
 {
-    logger->add("_h", _h);
-    logger->add("_tau_opt", _tau_opt);
+    logger->add("h", _h);
+    logger->add("tau_opt", _tau_opt);
     _autostack->log(logger);
     _solver->log(logger);
 }
@@ -78,12 +79,12 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _k_dsp_ref = _k_dsp;
     _d_dsp_ref = _d_dsp;
 
-    _Kj.setOnes(_k_dsp.size()+6, _k_dsp.size()+6);
-    _Kj.diagonal().tail(_k_dsp.size()) = _k_dsp;
-    _Kj.diagonal().head(6) = 1.*Eigen::Vector6d::Ones();
-    _Dj.setOnes(_d_dsp.size()+6, _d_dsp.size()+6);
-    _Dj.diagonal().tail(_d_dsp.size()) = _d_dsp;
-    _Dj.diagonal().head(6) = 0.1*Eigen::Vector6d::Ones();
+    _Kj.setIdentity(_k_dsp.size()+6, _k_dsp.size()+6);
+    _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _k_dsp.asDiagonal();
+    _Dj = 1e-3*_Kj;
+
+    _Kj_ref = _Kj;
+    _Dj_ref = _Dj;
 
     log();
 
@@ -96,21 +97,22 @@ void WBTCPlugin::on_start(double time)
 
     controller = boost::make_shared<opensot::WBTCController>(_robot->model());
 
-    _Kj.noalias() = _dynamic_reconfigure._joints_gain*_Kj;
-    _Dj.noalias() = _dynamic_reconfigure._joints_gain*_Dj;
-    controller->joint_impedance->setStiffnessDamping(_Kj, _Dj);
+    _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
+    _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
+    controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
                                                      
 
     log();
+    controller->log(_matlogger);
 }
 
 void WBTCPlugin::control_loop(double time, double period)
 {
     _robot->sense(true);
 
-    _Kj.noalias() = _dynamic_reconfigure._joints_gain*_Kj;
-    _Dj.noalias() = _dynamic_reconfigure._joints_gain*_Dj;
-    controller->joint_impedance->setStiffnessDamping(_Kj, _Dj);
+    _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
+    _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
+    controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
 
     if(controller->control(_tau))
     {
@@ -127,14 +129,17 @@ void WBTCPlugin::control_loop(double time, double period)
     }
 
     log();
+    controller->log(_matlogger);
 }
 
 void WBTCPlugin::log()
 {
-    _robot->log(_matlogger, XBot::get_time_ns(),"wbtc");
-    _matlogger->add("_Kj", _Kj);
-    _matlogger->add("_Dj", _Dj);
-    _matlogger->add("_tau_offset", _tau_offset);
+    _robot->log(_matlogger, XBot::get_time_ns(),"wbtc_");
+    _matlogger->add("Kj", _Kj);
+    _matlogger->add("Dj", _Dj);
+    _matlogger->add("Kj_ref", _Kj_ref);
+    _matlogger->add("Dj_ref", _Dj_ref);
+    _matlogger->add("tau_offset", _tau_offset);
 }
 
 bool WBTCPlugin::close()
@@ -148,8 +153,8 @@ dynamic_reconf::dynamic_reconf()
     dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
     f = boost::bind(&dynamic_reconf::cfg_callback, this, _1, _2);
     _server.setCallback(f);
-    _impedance_gain.store(1.0);
-    _joints_gain.store(0.0);
+    _impedance_gain.store(0.0);
+    _joints_gain.store(1.0);
 }
 
 void dynamic_reconf::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)

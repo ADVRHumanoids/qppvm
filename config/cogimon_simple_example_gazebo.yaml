@@ -1,0 +1,42 @@
+XBotCore:
+  config_path: "external/qppvm/config/cogimon_impedance.yaml"
+
+XBotInterface:
+  urdf_path: "configs/ADVR_shared/cogimon/urdf/cogimon.urdf"
+  srdf_path: "external/qppvm/config/cogimon_gazebo.srdf"
+  joint_map_path: "configs/ADVR_shared/cogimon/joint_map/cogimon_joint_map.yaml"
+
+RobotInterface:
+  framework_name: "ROS"
+
+ModelInterface:
+  model_type: "RBDL"
+  is_model_floating_base: "true"
+  
+MasterCommunicationInterface:
+  framework_name: "ROS"
+
+XBotRTPlugins:
+  plugins: ["HomingExample", "WBTCPlugin"] #"QPPVMPlugin"] #, "XBotRTCommunication"] 
+  io_plugins: ["CartesianIO"]
+  
+NRTPlugins:
+  plugins: [] #"HomingExample"]
+  
+TransmissionPlugins:
+  plugins: [] #["CogimonImpedanceAnkles"] #CogimonImpedanceAnkles CogimonAnkles
+  
+
+SimulationOptions:
+  verbose_mode: "false"
+
+CartesianInterface:
+  solver: "OpenSot"
+  problem_description:
+    stack:
+      - ["Waist"]
+    constraints: []
+
+    Waist:
+      type: "Cartesian"
+      distal_link: "Waist"

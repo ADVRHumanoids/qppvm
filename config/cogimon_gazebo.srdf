@@ -114,32 +114,33 @@
 <!--     <joint name="head_roll" value="0.0"/> -->
     <joint name="WaistYaw" value="0.0"/>
     <joint name="WaistLat" value="0.0"/>
-    <joint name="RShSag" value="-6.0"/>
-    <joint name="RShLat" value="-2.5"/>
-    <joint name="RShYaw" value="-5.0"/>
-    <joint name="RElbj" value="-7.0"/>
+    <joint name="RShSag" value="0.0"/>
+    <joint name="RShLat" value="0"/>
+    <joint name="RShYaw" value="0.0"/>
+    <joint name="RElbj" value="0.0"/>
     <joint name="RForearmPlate" value="0.0"/>
-    <joint name="RWrj1" value="-2.0"/>
+    <joint name="RWrj1" value="0.0"/>
     <joint name="RWrj2" value="0.0"/>
-    <joint name="LShSag" value="-5.0"/>
-    <joint name="LShLat" value="4.0"/>
-    <joint name="LShYaw" value="4.0"/>
-    <joint name="LElbj" value="-5.0"/>
-    <joint name="LForearmPlate" value="2.5"/>
-    <joint name="LWrj1" value="-2.0"/>
+    <joint name="LShSag" value="0.0"/>
+    <joint name="LShLat" value="0.0"/>
+    <joint name="LShYaw" value="0.0"/>
+    <joint name="LElbj" value="0.0"/>
+    <joint name="LForearmPlate" value="0"/>
+    <joint name="LWrj1" value="0.0"/>
     <joint name="LWrj2" value="0.0"/>
-    <joint name="RHipLat" value="2.5"/>
-    <joint name="RHipSag" value="2.5"/>
-    <joint name="RHipYaw" value="-5.0"/>
-    <joint name="RKneePitch" value="4.0"/>
+    <joint name="RHipLat" value="0"/>
+    <joint name="RHipSag" value="0"/>
+    <joint name="RHipYaw" value="0.0"/>
+    <joint name="RKneePitch" value="0.0"/>
     <joint name="RAnklePitch" value="0.0"/>
     <joint name="RAnkleRoll" value="0.0"/>
-    <joint name="LHipLat" value="1.0"/>
-    <joint name="LHipSag" value="-5.0"/>
-    <joint name="LHipYaw" value="-1.0"/>
-    <joint name="LKneePitch" value="6.5"/>
+    <joint name="LHipLat" value="0.0"/>
+    <joint name="LHipSag" value="0.0"/>
+    <joint name="LHipYaw" value="0.0"/>
+    <joint name="LKneePitch" value="0"/>
     <joint name="LAnklePitch" value="0.0"/>
     <joint name="LAnkleRoll" value="0.0"/>
   </group_state>
 
-</robot>  
+
+</robot>
