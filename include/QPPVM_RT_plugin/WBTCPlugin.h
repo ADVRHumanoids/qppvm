@@ -25,9 +25,20 @@ public:
 
     void log(XBot::MatLogger::Ptr logger);
 
+    OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr joint_impedance;
+    OpenSoT::constraints::torque::TorqueLimits::Ptr torque_lims;
+
+
 private:
     XBot::ModelInterface& _model;
     Eigen::VectorXd _h;
+    Eigen::VectorXd _q;
+    Eigen::VectorXd _tau_opt;
+
+
+    OpenSoT::AutoStack::Ptr _autostack;
+
+    OpenSoT::solvers::iHQP::Ptr _solver;
 
 };
 }
@@ -40,6 +51,7 @@ public:
     dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
     void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
     std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
+    std::atomic<double> _joints_gain; //Impedance GAINS in the joint impedance task
 
 };
 
@@ -63,6 +75,7 @@ private:
 
     // To store impedance values in the dsps
     Eigen::VectorXd _k_dsp,_k_dsp_ref;
+    Eigen::MatrixXd _Kj, _Dj;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
     Eigen::VectorXd _tau, _tau_ref, _tau_offset;
 
