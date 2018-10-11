@@ -21,7 +21,7 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
     _autostack<<torque_lims;
 
-    _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.);
+    _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1e1);
 
 }
 
@@ -96,8 +96,10 @@ void WBTCPlugin::on_start(double time)
 
     controller = boost::make_shared<opensot::WBTCController>(_robot->model());
 
-    controller->joint_impedance->setStiffnessDamping(_dynamic_reconfigure._joints_gain*_Kj,
-                                                     _dynamic_reconfigure._joints_gain*_Dj);
+    _Kj.noalias() = _dynamic_reconfigure._joints_gain*_Kj;
+    _Dj.noalias() = _dynamic_reconfigure._joints_gain*_Dj;
+    controller->joint_impedance->setStiffnessDamping(_Kj, _Dj);
+                                                     
 
     log();
 }
@@ -106,8 +108,9 @@ void WBTCPlugin::control_loop(double time, double period)
 {
     _robot->sense(true);
 
-    controller->joint_impedance->setStiffnessDamping(_dynamic_reconfigure._joints_gain*_Kj,
-                                                     _dynamic_reconfigure._joints_gain*_Dj);
+    _Kj.noalias() = _dynamic_reconfigure._joints_gain*_Kj;
+    _Dj.noalias() = _dynamic_reconfigure._joints_gain*_Dj;
+    controller->joint_impedance->setStiffnessDamping(_Kj, _Dj);
 
     if(controller->control(_tau))
     {
