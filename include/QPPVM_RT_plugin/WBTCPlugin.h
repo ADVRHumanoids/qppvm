@@ -4,6 +4,7 @@
 #include <XCM/XBotControlPlugin.h>
 #include <OpenSoT/solvers/iHQP.h>
 #include <OpenSoT/tasks/torque/JointImpedanceCtrl.h>
+#include <OpenSoT/tasks/torque/CartesianImpedanceCtrl.h>
 #include <OpenSoT/constraints/torque/TorqueLimits.h>
 #include <OpenSoT/utils/AutoStack.h>
 
@@ -27,6 +28,7 @@ public:
     void log(XBot::MatLogger::Ptr logger);
 
     OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr joint_impedance;
+    OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr LFoot;
     OpenSoT::constraints::torque::TorqueLimits::Ptr torque_lims;
 
 
@@ -85,6 +87,8 @@ private:
     Eigen::VectorXd _Kj_vec, _Dj_vec;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
     Eigen::VectorXd _tau, _tau_ref, _tau_offset;
+
+    Eigen::MatrixXd _K_Lfoot, _D_Lfoot;
 
     dynamic_reconf _dynamic_reconfigure;
 

@@ -16,14 +16,16 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     _alpha_filter = 1.;
 
     joint_impedance = boost::make_shared<OpenSoT::tasks::torque::JointImpedanceCtrl>(_q, _model);
+    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_sole", "r_sole");
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
 
     torque_lims = boost::make_shared<OpenSoT::constraints::torque::TorqueLimits>(tau_lims, -tau_lims);
 
-    _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
-    _autostack<<torque_lims;
+    _autostack = (LFoot/joint_impedance)<<torque_lims;
+//    _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
+//    _autostack<<torque_lims;
 
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.);
 
@@ -144,6 +146,14 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _Kj_ref = _Kj;
     _Dj_ref = _Dj;
 
+    _K_Lfoot.setIdentity(6,6); _D_Lfoot.setIdentity(6,6);
+    _K_Lfoot(0,0) = 500.;
+    _K_Lfoot(1,1) = 500.;
+    _K_Lfoot(2,2) = 50.;
+    _K_Lfoot.block(3,3,3,3) =  0.1*_K_Lfoot.block(0,0,3,3);
+
+    _D_Lfoot = _K_Lfoot/10.;
+
     log();
 
     return true;
@@ -158,6 +168,8 @@ void WBTCPlugin::on_start(double time)
     _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
     _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
     controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
+
+    controller->LFoot->setStiffnessDamping(_K_Lfoot, _D_Lfoot);
                                                      
 
     log();
@@ -201,6 +213,8 @@ void WBTCPlugin::log()
     _matlogger->add("d_dsp", _d_dsp);
     _matlogger->add("Kj_ref", _Kj_ref);
     _matlogger->add("Dj_ref", _Dj_ref);
+    _matlogger->add("K_Lfoot", _K_Lfoot);
+    _matlogger->add("D_Lfoot", _D_Lfoot);
     _matlogger->add("tau_offset", _tau_offset);
 }
 
