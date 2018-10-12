@@ -171,7 +171,7 @@
     <joint name="LHipSag" value="1000."/>
     <joint name="LHipYaw" value="1000."/>
     <joint name="LKneePitch" value="1000."/>
-    <joint name="LAnklePitch" value="2500.0"/>
+    <joint name="LAnklePitch" value="2000.0"/>
     <joint name="LAnkleRoll" value="100.0"/>
   </group_state>
 

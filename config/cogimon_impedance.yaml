@@ -191,7 +191,7 @@ CentAcESC_45:
     position:   [5000.0 , 0.0 , 20.0]
     # pos_Kp pos_Kd tor_Kp tor_Kd tor_Ki
     #  .... tor_K divided by 10000 to respect the int range [0..65536]
-    impedance:  [1000.0, 20.0, 6.0, 0.002, 1.0]
+    impedance:  [1000.0, 20.0, 10.0, 0.002, 0.0]
 
 CentAcESC_46:
   control_mode: impedance_d4
@@ -204,7 +204,7 @@ CentAcESC_46:
     position:   [5000.0 , 0.0 , 20.0]
     # pos_Kp pos_Kd tor_Kp tor_Kd tor_Ki
     #  .... tor_K divided by 10000 to respect the int range [0..65536]
-    impedance:  [1000.0, 20.0, 6.0, 0.002, 1.0]
+    impedance:  [1000.0, 20.0, 10.0, 0.002, 0.0]
 
 #############################
 # Left tibia
@@ -269,7 +269,7 @@ CentAcESC_55:
     position:   [5000.0 , 0.0 , 20.0]
     # pos_Kp pos_Kd tor_Kp tor_Kd tor_Ki
     #  .... tor_K divided by 10000 to respect the int range [0..65536]
-    impedance:  [1000.0, 20.0, 6.0, 0.002, 1.0]
+    impedance:  [1000.0, 20.0, 10.0, 0.002, 0.0]
 
 CentAcESC_56:
   control_mode: impedance_d4
@@ -282,7 +282,7 @@ CentAcESC_56:
     position:   [5000.0 , 0.0 , 20.0]
     # pos_Kp pos_Kd tor_Kp tor_Kd tor_Ki
     #  .... tor_K divided by 10000 to respect the int range [0..65536]
-    impedance:  [1000.0, 20.0, 6.0, 0.002, 1.0]
+    impedance:  [1000.0, 20.0, 10.0, 0.002, 0.0]
 
 ##############################
 # RIGHT ARM
