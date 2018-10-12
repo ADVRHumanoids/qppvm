@@ -11,12 +11,15 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     _tau_opt.setZero(_model.getJointNum());
 
     _model.getJointPosition(_q);
+    _model.getJointVelocity(_qdot);
+    _qdot_filtered = _qdot;
+    _alpha_filter = 1.;
 
     joint_impedance = boost::make_shared<OpenSoT::tasks::torque::JointImpedanceCtrl>(_q, _model);
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
-    std::cout<<"tau_lims: "<<tau_lims<<std::endl;
+
     torque_lims = boost::make_shared<OpenSoT::constraints::torque::TorqueLimits>(tau_lims, -tau_lims);
 
     _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
@@ -26,16 +29,33 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
 
 }
 
+void WBTCController::setFilter(const double period, const double cut_off_freq)
+{
+    _period = period;
+    _cut_off_freq = cut_off_freq;
+    _alpha_filter = 1-std::exp(-2.*M_PI*cut_off_freq*period);
+}
+
 bool WBTCController::control(Eigen::VectorXd& tau)
 {
-    _model.computeNonlinearTerm(_h);
     _model.getJointPosition(_q);
+    _model.getJointVelocity(_qdot);
+    
+    //HERE WE FILTER and we apply the filtered velocities to the model
+    _qdot_filtered.noalias() = _alpha_filter*_qdot + (1.-_alpha_filter)*_qdot_filtered;
+    _model.setJointVelocity(_qdot_filtered);
+    _model.update();
+    
+    _model.computeNonlinearTerm(_h);
 
     _autostack->update(_q);
 
     if(!_solver->solve(_tau_opt))
         _tau_opt.setZero(_tau_opt.size());
 
+    
+    _tau_opt = joint_impedance->getb();
+    
     tau = _tau_opt +  _h;
 
     return true;
@@ -46,6 +66,9 @@ void WBTCController::log(XBot::MatLogger::Ptr logger)
 {
     logger->add("h", _h);
     logger->add("tau_opt", _tau_opt);
+    logger->add("q", _q);
+    logger->add("qdot", _qdot);
+    logger->add("qdot_filtered", _qdot_filtered);
     _autostack->log(logger);
     _solver->log(logger);
 }
@@ -81,8 +104,14 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
     _Kj.setIdentity(_k_dsp.size()+6, _k_dsp.size()+6);
     _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _k_dsp.asDiagonal();
-    _Dj = 1e-3*_Kj;
-
+    _Kj(10,10) = _Kj(16,16) = 40; //pitch
+    _Kj(11,11) = _Kj(17,17) = 40; //roll
+    
+    _Dj.setIdentity(_d_dsp.size()+6, _d_dsp.size()+6);
+    _Dj.block(6,6,_d_dsp.size(),_d_dsp.size()) = 0.02*_d_dsp.asDiagonal();
+    _Dj(10,10) = _Dj(16,16) = 0.2; //pitch
+    _Dj(11,11) = _Dj(17,17) = 0.2; //roll
+    
     _Kj_ref = _Kj;
     _Dj_ref = _Dj;
 
@@ -108,6 +137,8 @@ void WBTCPlugin::on_start(double time)
 
 void WBTCPlugin::control_loop(double time, double period)
 {
+    controller->setFilter(period, 12.); //Matteo dice che 12 lo usano in COMAU
+    
     _robot->sense(true);
 
     _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
@@ -137,6 +168,8 @@ void WBTCPlugin::log()
     _robot->log(_matlogger, XBot::get_time_ns(),"wbtc_");
     _matlogger->add("Kj", _Kj);
     _matlogger->add("Dj", _Dj);
+    _matlogger->add("k_dsp", _k_dsp);
+    _matlogger->add("d_dsp", _d_dsp);
     _matlogger->add("Kj_ref", _Kj_ref);
     _matlogger->add("Dj_ref", _Dj_ref);
     _matlogger->add("tau_offset", _tau_offset);
@@ -153,8 +186,8 @@ dynamic_reconf::dynamic_reconf()
     dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
     f = boost::bind(&dynamic_reconf::cfg_callback, this, _1, _2);
     _server.setCallback(f);
-    _impedance_gain.store(0.0);
-    _joints_gain.store(1.0);
+    _impedance_gain.store(1.0);
+    _joints_gain.store(0.0);
 }
 
 void dynamic_reconf::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)

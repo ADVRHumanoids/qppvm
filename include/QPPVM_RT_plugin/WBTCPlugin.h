@@ -22,6 +22,7 @@ public:
     WBTCController(XBot::ModelInterface& model);
 
     bool control(Eigen::VectorXd& tau);
+    void setFilter(const double period, const double cut_off_freq);
 
     void log(XBot::MatLogger::Ptr logger);
 
@@ -32,8 +33,13 @@ public:
 private:
     XBot::ModelInterface& _model;
     Eigen::VectorXd _h;
-    Eigen::VectorXd _q;
+    Eigen::VectorXd _q, _qdot;
     Eigen::VectorXd _tau_opt;
+    
+    Eigen::VectorXd _qdot_filtered;
+    double _alpha_filter;
+    double _period;
+    double _cut_off_freq;
 
 
     OpenSoT::AutoStack::Ptr _autostack;
