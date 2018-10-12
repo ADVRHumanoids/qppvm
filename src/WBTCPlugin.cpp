@@ -166,7 +166,7 @@ void WBTCPlugin::on_start(double time)
 
 void WBTCPlugin::control_loop(double time, double period)
 {
-    controller->setFilter(period, 12.); //Matteo dice che 12 lo usano in COMAU
+    controller->setFilter(period, 10.); //Matteo dice che 12 lo usano in COMAU
     
     _robot->sense(true);
 

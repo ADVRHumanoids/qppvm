@@ -171,7 +171,7 @@
     <joint name="LHipSag" value="1000."/>
     <joint name="LHipYaw" value="1000."/>
     <joint name="LKneePitch" value="1000."/>
-    <joint name="LAnklePitch" value="2000.0"/>
+    <joint name="LAnklePitch" value="2500.0"/>
     <joint name="LAnkleRoll" value="100.0"/>
   </group_state>
 
@@ -198,14 +198,14 @@
     <joint name="RHipSag" value="1.0"/>
     <joint name="RHipYaw" value="1.0"/>
     <joint name="RKneePitch" value="1.0"/>
-    <joint name="RAnklePitch" value="1.0"/>
-    <joint name="RAnkleRoll" value="1.0"/>
+    <joint name="RAnklePitch" value="3.0"/>
+    <joint name="RAnkleRoll" value="3.0"/>
     <joint name="LHipLat" value="1.0"/>
     <joint name="LHipSag" value="1.0"/>
     <joint name="LHipYaw" value="1.0"/>
     <joint name="LKneePitch" value="1.0"/>
-    <joint name="LAnklePitch" value="1.0"/>
-    <joint name="LAnkleRoll" value="1.0"/>
+    <joint name="LAnklePitch" value="3.0"/>
+    <joint name="LAnkleRoll" value="3.0"/>
   </group_state>
 
 </robot>  
