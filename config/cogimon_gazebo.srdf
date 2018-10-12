@@ -142,5 +142,69 @@
     <joint name="LAnkleRoll" value="0.0"/>
   </group_state>
 
+<group_state name="joint_stiffness" group="chains">
+<!--     <joint name="head_roll" value="0.0"/> -->
+    <joint name="WaistYaw" value="100.0"/>
+    <joint name="WaistLat" value="100.0"/>
+    <joint name="RShSag" value="100.0"/>
+    <joint name="RShLat" value="100.0"/>
+    <joint name="RShYaw" value="100.0"/>
+    <joint name="RElbj" value="100.0"/>
+    <joint name="RForearmPlate" value="100.0"/>
+    <joint name="RWrj1" value="100.0"/>
+    <joint name="RWrj2" value="100.0"/>
+    <joint name="LShSag" value="100.0"/>
+    <joint name="LShLat" value="100.0"/>
+    <joint name="LShYaw" value="100.0"/>
+    <joint name="LElbj" value="100.0"/>
+    <joint name="LForearmPlate" value="100.0"/>
+    <joint name="LWrj1" value="100.0"/>
+    <joint name="LWrj2" value="100.0"/>
+    <joint name="RHipLat" value="100.0"/>
+    <joint name="RHipSag" value="100.0"/>
+    <joint name="RHipYaw" value="100.0"/>
+    <joint name="RKneePitch" value="100.0"/>
+    <joint name="RAnklePitch" value="100.0"/>
+    <joint name="RAnkleRoll" value="100.0"/>
+    <joint name="LHipLat" value="100.0"/>
+    <joint name="LHipSag" value="100.0"/>
+    <joint name="LHipYaw" value="100.0"/>
+    <joint name="LKneePitch" value="100.0"/>
+    <joint name="LAnklePitch" value="100.0"/>
+    <joint name="LAnkleRoll" value="100.0"/>
+  </group_state>
+
+<group_state name="joint_damping" group="chains">
+<!--     <joint name="head_roll" value="0.0"/> -->
+    <joint name="WaistYaw" value="0.01"/>
+    <joint name="WaistLat" value="0.01"/>
+    <joint name="RShSag" value="0.01"/>
+    <joint name="RShLat" value="0.01"/>
+    <joint name="RShYaw" value="0.01"/>
+    <joint name="RElbj" value="0.01"/>
+    <joint name="RForearmPlate" value="0.01"/>
+    <joint name="RWrj1" value="0.01"/>
+    <joint name="RWrj2" value="0.01"/>
+    <joint name="LShSag" value="0.01"/>
+    <joint name="LShLat" value="0.01"/>
+    <joint name="LShYaw" value="0.01"/>
+    <joint name="LElbj" value="0.01"/>
+    <joint name="LForearmPlate" value="0.01"/>
+    <joint name="LWrj1" value="0.01"/>
+    <joint name="LWrj2" value="0.01"/>
+    <joint name="RHipLat" value="0.01"/>
+    <joint name="RHipSag" value="0.01"/>
+    <joint name="RHipYaw" value="0.01"/>
+    <joint name="RKneePitch" value="0.01"/>
+    <joint name="RAnklePitch" value="0.01"/>
+    <joint name="RAnkleRoll" value="0.01"/>
+    <joint name="LHipLat" value="0.01"/>
+    <joint name="LHipSag" value="0.01"/>
+    <joint name="LHipYaw" value="0.01"/>
+    <joint name="LKneePitch" value="0.01"/>
+    <joint name="LAnklePitch" value="0.01"/>
+    <joint name="LAnkleRoll" value="0.01"/>
+  </group_state>
+
 
 </robot>

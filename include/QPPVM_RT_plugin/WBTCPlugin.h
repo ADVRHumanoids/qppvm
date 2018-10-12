@@ -82,6 +82,7 @@ private:
     // To store impedance values in the dsps
     Eigen::VectorXd _k_dsp,_k_dsp_ref;
     Eigen::MatrixXd _Kj, _Dj, _Kj_ref, _Dj_ref;
+    Eigen::VectorXd _Kj_vec, _Dj_vec;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
     Eigen::VectorXd _tau, _tau_ref, _tau_offset;
 

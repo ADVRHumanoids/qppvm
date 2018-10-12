@@ -54,8 +54,6 @@ bool WBTCController::control(Eigen::VectorXd& tau)
         _tau_opt.setZero(_tau_opt.size());
 
     
-    _tau_opt = joint_impedance->getb();
-    
     tau = _tau_opt +  _h;
 
     return true;
@@ -95,22 +93,53 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _tau.setZero(_robot->model().getJointNum());
     _tau_offset.setZero(_robot->getJointNum());    
     
-    _robot->getRobotState("torque_offset", _tau_offset);
+    if(!_robot->getRobotState("torque_offset", _tau_offset))
+        _tau_offset.setZero(_robot->getJointNum());
+
 
     _robot->getStiffness(_k_dsp);
     _robot->getDamping(_d_dsp);
     _k_dsp_ref = _k_dsp;
     _d_dsp_ref = _d_dsp;
 
+    _Kj_vec.setZero(_robot->getJointNum());
+    _Dj_vec.setZero(_robot->getJointNum());
+
+    if(!_robot->getRobotState("joint_stiffness", _Kj_vec))
+    {
+        XBot::Logger::error("joint_stiffness param missing\n");
+        return false;
+    }
+    for(unsigned int i = 0; i < _Kj_vec.size(); ++i)
+    {
+        if(_Kj_vec[i] < 0.0)
+        {
+            XBot::Logger::error("joint_stiffness value can not be negative!\n");
+            return false;
+        }
+    }
+
+    if(!_robot->getRobotState("joint_damping", _Dj_vec))
+    {
+        XBot::Logger::error("joint_damping param missing\n");
+        return false;
+    }
+    for(unsigned int i = 0; i < _Dj_vec.size(); ++i)
+    {
+        if(_Dj_vec[i] < 0.0)
+        {
+            XBot::Logger::error("joint_damping value can not be negative!\n");
+            return false;
+        }
+    }
+
+
+
     _Kj.setIdentity(_k_dsp.size()+6, _k_dsp.size()+6);
-    _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _k_dsp.asDiagonal();
-    _Kj(10,10) = _Kj(16,16) = 40; //pitch
-    _Kj(11,11) = _Kj(17,17) = 40; //roll
+    _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _Kj_vec.asDiagonal();
     
     _Dj.setIdentity(_d_dsp.size()+6, _d_dsp.size()+6);
-    _Dj.block(6,6,_d_dsp.size(),_d_dsp.size()) = 0.02*_d_dsp.asDiagonal();
-    _Dj(10,10) = _Dj(16,16) = 0.2; //pitch
-    _Dj(11,11) = _Dj(17,17) = 0.2; //roll
+    _Dj.block(6,6,_d_dsp.size(),_d_dsp.size()) = _Dj_vec.asDiagonal();
     
     _Kj_ref = _Kj;
     _Dj_ref = _Dj;
