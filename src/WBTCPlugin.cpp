@@ -245,7 +245,7 @@ void WBTCPlugin::set_dyn_reconfigure_gains()
 
 void WBTCPlugin::control_loop(double time, double period)
 {
-    controller->setFilter(period, 10.); //Matteo dice che 12 lo usano in COMAU
+    //controller->setFilter(period, 10.); //Matteo dice che 12 lo usano in COMAU
     
     _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::Velocity, XBot::Sync::MotorSide);
 
