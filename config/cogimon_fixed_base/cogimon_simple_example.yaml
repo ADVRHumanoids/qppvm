@@ -38,10 +38,17 @@ CartesianInterface:
   solver: "OpenSot"
   problem_description:
     stack:
-      - ["Waist"]
+      - ["LFoot", "RFoot"]
     constraints: []
 
-    Waist:
+    LFoot:
       type: "Cartesian"
-      distal_link: "Waist"
+      distal_link: "l_ankle"
+      base_link: "Waist"
+
+    RFoot:
+      type: "Cartesian"
+      distal_link: "r_ankle"
+      base_link: "Waist"
+
 

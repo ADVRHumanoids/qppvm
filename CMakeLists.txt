@@ -47,6 +47,7 @@ endif()
 # include
 include_directories(include
                     ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${dynamic_reconfigure_advr_INCLUDE_DIRS}
+                    ${cartesian_interface_INCLUDE_DIRS}
                     )
 
 ###########
@@ -75,7 +76,7 @@ endif()
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 #target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
-target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES})
 
 #############
 ## Install ##

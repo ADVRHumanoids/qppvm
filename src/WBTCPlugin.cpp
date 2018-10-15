@@ -16,8 +16,9 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     _alpha_filter = 1.;
 
     joint_impedance = boost::make_shared<OpenSoT::tasks::torque::JointImpedanceCtrl>(_q, _model);
-    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_ankle", "Waist");
-    RFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("RFoot", _q, _model, "r_ankle", "Waist");
+    std::list<unsigned int> id = {0, 1, 2};
+    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_ankle", "Waist", id);
+    RFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("RFoot", _q, _model, "r_ankle", "Waist", id);
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
@@ -35,7 +36,14 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
 //    _autostack<<torque_lims;
 
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(), _autostack->getBounds(), 1.);
+    
 
+    ///////
+//     J.setZero(6, model.getJointNum());
+//     Jtf.setZero(model.getJointNum());
+//     spring.setZero(6);
+//     damper.setZero(6);
+//     force.setZero(6);
 }
 
 void WBTCController::setFilter(const double period, const double cut_off_freq)
@@ -63,6 +71,19 @@ bool WBTCController::control(Eigen::VectorXd& tau)
     if(!_solver->solve(_tau_opt))
         _tau_opt.setZero(_tau_opt.size());
 
+    
+    
+//     _model.getRelativeJacobian("l_sole","Waist",J);
+//     LFoot->getSpringForce(spring); LFoot->getDamperForce(damper);
+//     force = spring+damper;
+//     Jtf.noalias() = J.transpose()*force;
+//     _tau_opt.segment(0,6) = Jtf.segment(0,6);
+//     _model.getRelativeJacobian("r_sole","Waist",J);
+//     RFoot->getSpringForce(spring); RFoot->getDamperForce(damper);
+//     force = spring+damper;
+//     Jtf.noalias() = J.transpose()*force;
+//     _tau_opt.segment(6,6) = Jtf.segment(6,6);
+    
     
     tau = _tau_opt +  _h;
 
@@ -95,12 +116,13 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _matlogger = XBot::MatLogger::getLogger("/tmp/wbtc_log");
 
     _robot = handle->getRobotInterface();
+    _model = XBot::ModelInterface::getModel(_robot->getPathToConfig());
     _robot->sense(true);
 
     _k_dsp.setZero(_robot->getJointNum());
     _d_dsp.setZero(_robot->getJointNum());
     _tau_ref.setZero(_robot->getJointNum());
-    _tau.setZero(_robot->model().getJointNum());
+    _tau.setZero(_model->getJointNum());
     _tau_offset.setZero(_robot->getJointNum());    
     
     if(!_robot->getRobotState("torque_offset", _tau_offset))
@@ -144,7 +166,7 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     }
 
 
-    if(_robot->model().isFloatingBase())
+    if(_model->isFloatingBase())
     {
         _Kj.setZero(_k_dsp.size()+6, _k_dsp.size()+6);
         _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _Kj_vec.asDiagonal();
@@ -165,55 +187,70 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _Kj_ref = _Kj;
     _Dj_ref = _Dj;
 
-    _K_Lfoot.setIdentity(6,6); _D_Lfoot.setIdentity(6,6);
-    _K_Lfoot(0,0) = 300.;
-    _K_Lfoot(1,1) = 300.;
-    _K_Lfoot(2,2) = 300.;
-    _K_Lfoot.block(3,3,3,3) =  _K_Lfoot.block(0,0,3,3);
-
-    _D_Lfoot(0,0) = 10.;
-    _D_Lfoot(1,1) = 10.;
-    _D_Lfoot(2,2) = 10.;
-    _D_Lfoot.block(3,3,3,3) =  _D_Lfoot.block(0,0,3,3);
+    _K_Foot.setIdentity(6,6); _D_Foot.setIdentity(6,6);
+    _K_Lfoot_ref = _K_Rfoot_ref = _K_Foot;
+    _D_Lfoot_ref = _D_Rfoot_ref = _D_Foot;
     
-    
-    _K_Rfoot = _K_Lfoot;
-    _D_Rfoot = _D_Lfoot;
-    
-    _use_offsets = false;
+    _use_offsets = true;
     
     log();
+    
+    /* Init cartesian ifc */
+    YAML::Node yaml_file = YAML::LoadFile(handle->getPathToConfigFile());
+    XBot::Cartesian::ProblemDescription ik_problem(yaml_file["CartesianInterface"]["problem_description"], _model);
+    _ci = std::make_shared<XBot::Cartesian::CartesianInterfaceImpl>(_model, ik_problem);
+    _ci->enableOtg(0.002);
+    _sync_from_nrt = std::make_shared<XBot::Cartesian::Utils::SyncFromIO>("/xbotcore/cartesian_interface", handle->getSharedMemory());
 
     return true;
 }
 
 void WBTCPlugin::on_start(double time)
 {
-    _robot->sense(true);
+    _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::Velocity, XBot::Sync::MotorSide);
 
-    controller = boost::make_shared<opensot::WBTCController>(_robot->model());
+    controller = boost::make_shared<opensot::WBTCController>(*_model);
 
     _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
     _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
     controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
 
-    controller->LFoot->setStiffnessDamping(_K_Lfoot, _D_Lfoot);
-    controller->RFoot->setStiffnessDamping(_K_Rfoot, _D_Rfoot);
+    _K_Lfoot_ref = _K_Rfoot_ref = _dynamic_reconfigure._stiffness_Feet_gain*_K_Foot;
+    _D_Lfoot_ref = _D_Rfoot_ref = _dynamic_reconfigure._damping_Feet_gain*_D_Foot;
+    
+    controller->LFoot->setStiffnessDamping(_K_Lfoot_ref, _D_Lfoot_ref);
+    controller->RFoot->setStiffnessDamping(_K_Rfoot_ref, _D_Rfoot_ref);
                                                      
 
     log();
     controller->log(_matlogger);
+    
+    _first_sync_done = false;
+    
+    
+}
+
+void WBTCPlugin::set_dyn_reconfigure_gains()
+{
+    _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
+    _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
+    controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
+    
+    _K_Lfoot_ref = _K_Rfoot_ref = _dynamic_reconfigure._stiffness_Feet_gain*_K_Foot;
+    _D_Lfoot_ref = _D_Rfoot_ref = _dynamic_reconfigure._damping_Feet_gain*_D_Foot;
+    
+    controller->LFoot->setStiffnessDamping(_K_Lfoot_ref, _D_Lfoot_ref);
+    controller->RFoot->setStiffnessDamping(_K_Rfoot_ref, _D_Rfoot_ref);
 }
 
 void WBTCPlugin::control_loop(double time, double period)
 {
     controller->setFilter(period, 10.); //Matteo dice che 12 lo usano in COMAU
     
-    _robot->sense(true);
+    _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::Velocity, XBot::Sync::MotorSide);
 
-    _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
-    _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
-    controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
+    set_dyn_reconfigure_gains();
+    sync_cartesian_ifc(time, period);
 
     if(controller->control(_tau))
     {
@@ -224,9 +261,9 @@ void WBTCPlugin::control_loop(double time, double period)
         _robot->setDamping(_d_dsp_ref);
 
         if(_use_offsets)
-            _tau_ref = _tau.tail(_robot->model().getActuatedJointNum()) - _tau_offset;
+            _tau_ref = _tau.tail(_model->getActuatedJointNum()) + _tau_offset;
         else
-            _tau_ref = _tau.tail(_robot->model().getActuatedJointNum());
+            _tau_ref = _tau.tail(_model->getActuatedJointNum());
         
         _robot->setEffortReference(_tau_ref);
 
@@ -246,10 +283,10 @@ void WBTCPlugin::log()
     _matlogger->add("d_dsp", _d_dsp);
     _matlogger->add("Kj_ref", _Kj_ref);
     _matlogger->add("Dj_ref", _Dj_ref);
-    _matlogger->add("K_Lfoot", _K_Lfoot);
-    _matlogger->add("D_Lfoot", _D_Lfoot);
-    _matlogger->add("K_Rfoot", _K_Rfoot);
-    _matlogger->add("D_Rfoot", _D_Rfoot);
+    _matlogger->add("K_Lfoot_ref", _K_Lfoot_ref);
+    _matlogger->add("D_Lfoot_ref", _D_Lfoot_ref);
+    _matlogger->add("K_Rfoot_ref", _K_Rfoot_ref);
+    _matlogger->add("D_Rfoot_ref", _D_Rfoot_ref);
     _matlogger->add("tau_offset", _tau_offset);
 }
 
@@ -266,6 +303,8 @@ dynamic_reconf::dynamic_reconf()
     _server.setCallback(f);
     _impedance_gain.store(1.0);
     _joints_gain.store(0.0);
+    _stiffness_Feet_gain.store(0.0);
+    _damping_Feet_gain.store(0.0);
 }
 
 void dynamic_reconf::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
@@ -273,14 +312,58 @@ void dynamic_reconf::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t
     _impedance_gain.store(config.impedance_gain);
 //    _stiffness_Waist_gain.store(config.stiffness_waist);
 //    _damping_Waist_gain.store(config.damping_waist);
-//    _stiffness_Feet_gain.store(config.stiffness_feet);
-//    _damping_Feet_gain.store(config.damping_feet);
+    _stiffness_Feet_gain.store(config.stiffness_feet);
+    _damping_Feet_gain.store(config.damping_feet);
     _joints_gain.store(config.joints_gain);
 
     Logger::info(Logger::Severity::HIGH, "\nSetting impedance gain to %f \n", config.impedance_gain);
     Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_gain);
 //    Logger::info(Logger::Severity::HIGH, "Setting waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
-//    Logger::info(Logger::Severity::HIGH, "Setting feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
+    Logger::info(Logger::Severity::HIGH, "Setting feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
+}
+
+void WBTCPlugin::sync_cartesian_ifc(double time, double period)
+{
+    /* Sync cartesian references from ROS */
+    
+    if(!_first_sync_done)
+    {
+        if(_sync_from_nrt->try_reset(_model, time))
+        {
+            _first_sync_done = true;
+            XBot::Logger::info(Logger::Severity::HIGH, "Resetting NRT CI \n");
+        }
+    }
+    
+    if(_first_sync_done)
+    {
+        if(_sync_from_nrt->try_sync(time, period, _ci, _model))
+        {
+            _matlogger->add("sync_done", 1);
+        }
+        else
+        {
+            _matlogger->add("sync_done", 0);
+        }
+    }
+    
+
+    if(!_ci->update(time, period))
+    {
+        XBot::Logger::error("CartesianInterface: unable to solve \n");
+        return;
+    }
+    
+    
+    /* Update qppvm references */
+    Eigen::Affine3d T_ref;
+    static Eigen::MatrixXd T_ref_matrix(4,4);
+    _ci->getPoseReference(controller->LFoot->getDistalLink(), T_ref);
+    T_ref_matrix = T_ref.matrix();
+    controller->LFoot->setReference(T_ref_matrix);
+    _ci->getPoseReference(controller->RFoot->getDistalLink(), T_ref);
+    T_ref_matrix = T_ref.matrix();
+    controller->RFoot->setReference(T_ref_matrix);
 }
 
 }

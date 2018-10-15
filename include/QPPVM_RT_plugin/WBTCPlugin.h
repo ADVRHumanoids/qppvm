@@ -13,6 +13,8 @@
 #include <dynamic_reconfigure_advr/server.h>
 #include <QPPVM_RT_plugin/QppvmConfig.h>
 
+#include <cartesian_interface/CartesianPlugin/Utils.h>
+
 #include<atomic>
 
 namespace opensot{
@@ -47,6 +49,10 @@ private:
     OpenSoT::AutoStack::Ptr _autostack;
 
     OpenSoT::solvers::iHQP::Ptr _solver;
+    
+    
+    Eigen::MatrixXd J;
+    Eigen::VectorXd spring, damper, force, Jtf;
 
 };
 }
@@ -60,6 +66,7 @@ public:
     void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
     std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
     std::atomic<double> _joints_gain; //Impedance GAINS in the joint impedance task
+    std::atomic<double> _stiffness_Feet_gain, _damping_Feet_gain; //Impedance GAINS for the feet
 
 };
 
@@ -74,6 +81,8 @@ public:
     virtual bool close();
 
     void log();
+    void set_dyn_reconfigure_gains();
+    void sync_cartesian_ifc(double time, double period);
 
     opensot::WBTCController::Ptr controller;
 
@@ -88,12 +97,18 @@ private:
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
     Eigen::VectorXd _tau, _tau_ref, _tau_offset;
 
-    Eigen::MatrixXd _K_Lfoot, _D_Lfoot;
-    Eigen::MatrixXd _K_Rfoot, _D_Rfoot;
+    Eigen::MatrixXd _K_Foot, _D_Foot;
+    Eigen::MatrixXd _K_Lfoot_ref, _D_Lfoot_ref, _K_Rfoot_ref, _D_Rfoot_ref;
 
     dynamic_reconf _dynamic_reconfigure;
     
     bool _use_offsets;
+    
+    /* Cartesian ifc variables */
+    XBot::Cartesian::CartesianInterfaceImpl::Ptr _ci;
+    XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
+    bool _first_sync_done;
+    XBot::ModelInterface::Ptr _model;
 
 
 };
