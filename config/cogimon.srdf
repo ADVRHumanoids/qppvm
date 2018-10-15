@@ -131,7 +131,7 @@
     <joint name="RHipLat" value="0.0"/>
     <joint name="RHipSag" value="0.0"/>
     <joint name="RHipYaw" value="0.0"/>
-    <joint name="RKneePitch" value="-5.0"/>
+    <joint name="RKneePitch" value="0.0"/>
     <joint name="RAnklePitch" value="0.0"/>
     <joint name="RAnkleRoll" value="0.0"/>
     <joint name="LHipLat" value="0.0"/>
