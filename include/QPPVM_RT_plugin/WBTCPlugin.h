@@ -28,7 +28,7 @@ public:
     void log(XBot::MatLogger::Ptr logger);
 
     OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr joint_impedance;
-    OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr LFoot;
+    OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr LFoot, RFoot;
     OpenSoT::constraints::torque::TorqueLimits::Ptr torque_lims;
 
 
@@ -89,8 +89,11 @@ private:
     Eigen::VectorXd _tau, _tau_ref, _tau_offset;
 
     Eigen::MatrixXd _K_Lfoot, _D_Lfoot;
+    Eigen::MatrixXd _K_Rfoot, _D_Rfoot;
 
     dynamic_reconf _dynamic_reconfigure;
+    
+    bool _use_offsets;
 
 
 };

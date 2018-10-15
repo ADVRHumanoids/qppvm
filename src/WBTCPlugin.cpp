@@ -16,12 +16,16 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     _alpha_filter = 1.;
 
     joint_impedance = boost::make_shared<OpenSoT::tasks::torque::JointImpedanceCtrl>(_q, _model);
-    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_sole", "r_sole");
+    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_ankle", "Waist");
+    RFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("RFoot", _q, _model, "r_ankle", "Waist");
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
 
+    for(unsigned int i = 0; i < 6; ++i)
+        tau_lims[i] = 0.0;
     torque_lims = boost::make_shared<OpenSoT::constraints::torque::TorqueLimits>(tau_lims, -tau_lims);
+    
 
     _autostack = (LFoot/joint_impedance)<<torque_lims;
 //    _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
@@ -45,6 +49,7 @@ bool WBTCController::control(Eigen::VectorXd& tau)
     
     //HERE WE FILTER and we apply the filtered velocities to the model
     _qdot_filtered.noalias() = _alpha_filter*_qdot + (1.-_alpha_filter)*_qdot_filtered;
+    _model.setJointPosition(_q);
     _model.setJointVelocity(_qdot_filtered);
     _model.update();
     
@@ -137,23 +142,32 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
 
 
-    _Kj.setIdentity(_k_dsp.size()+6, _k_dsp.size()+6);
+    _Kj.setZero(_k_dsp.size()+6, _k_dsp.size()+6);
     _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _Kj_vec.asDiagonal();
     
-    _Dj.setIdentity(_d_dsp.size()+6, _d_dsp.size()+6);
+    _Dj.setZero(_d_dsp.size()+6, _d_dsp.size()+6);
     _Dj.block(6,6,_d_dsp.size(),_d_dsp.size()) = _Dj_vec.asDiagonal();
     
     _Kj_ref = _Kj;
     _Dj_ref = _Dj;
 
     _K_Lfoot.setIdentity(6,6); _D_Lfoot.setIdentity(6,6);
-    _K_Lfoot(0,0) = 500.;
-    _K_Lfoot(1,1) = 500.;
-    _K_Lfoot(2,2) = 50.;
-    _K_Lfoot.block(3,3,3,3) =  0.1*_K_Lfoot.block(0,0,3,3);
+    _K_Lfoot(0,0) = 300.;
+    _K_Lfoot(1,1) = 300.;
+    _K_Lfoot(2,2) = 300.;
+    _K_Lfoot.block(3,3,3,3) =  _K_Lfoot.block(0,0,3,3);
 
-    _D_Lfoot = _K_Lfoot/10.;
-
+    _D_Lfoot(0,0) = 10.;
+    _D_Lfoot(1,1) = 10.;
+    _D_Lfoot(2,2) = 10.;
+    _D_Lfoot.block(3,3,3,3) =  _D_Lfoot.block(0,0,3,3);
+    
+    
+    _K_Rfoot = _K_Lfoot;
+    _D_Rfoot = _D_Lfoot;
+    
+    _use_offsets = false;
+    
     log();
 
     return true;
@@ -170,6 +184,7 @@ void WBTCPlugin::on_start(double time)
     controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
 
     controller->LFoot->setStiffnessDamping(_K_Lfoot, _D_Lfoot);
+    controller->RFoot->setStiffnessDamping(_K_Rfoot, _D_Rfoot);
                                                      
 
     log();
@@ -194,7 +209,11 @@ void WBTCPlugin::control_loop(double time, double period)
         _robot->setStiffness(_k_dsp_ref);
         _robot->setDamping(_d_dsp_ref);
 
-        _tau_ref = _tau.tail(_robot->model().getActuatedJointNum()) - _tau_offset;
+        if(_use_offsets)
+            _tau_ref = _tau.tail(_robot->model().getActuatedJointNum()) - _tau_offset;
+        else
+            _tau_ref = _tau.tail(_robot->model().getActuatedJointNum());
+        
         _robot->setEffortReference(_tau_ref);
 
         _robot->move();
@@ -215,6 +234,8 @@ void WBTCPlugin::log()
     _matlogger->add("Dj_ref", _Dj_ref);
     _matlogger->add("K_Lfoot", _K_Lfoot);
     _matlogger->add("D_Lfoot", _D_Lfoot);
+    _matlogger->add("K_Rfoot", _K_Rfoot);
+    _matlogger->add("D_Rfoot", _D_Rfoot);
     _matlogger->add("tau_offset", _tau_offset);
 }
 
