@@ -22,12 +22,15 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
 
-    for(unsigned int i = 0; i < 6; ++i)
-        tau_lims[i] = 0.0;
+    if(_model.isFloatingBase())
+    {
+        for(unsigned int i = 0; i < 6; ++i)
+            tau_lims[i] = 0.0;
+    }
     torque_lims = boost::make_shared<OpenSoT::constraints::torque::TorqueLimits>(tau_lims, -tau_lims);
     
 
-    _autostack = (LFoot/joint_impedance)<<torque_lims;
+    _autostack = ((LFoot+RFoot)/joint_impedance)<<torque_lims;
 //    _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
 //    _autostack<<torque_lims;
 
@@ -141,12 +144,23 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     }
 
 
-
-    _Kj.setZero(_k_dsp.size()+6, _k_dsp.size()+6);
-    _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _Kj_vec.asDiagonal();
+    if(_robot->model().isFloatingBase())
+    {
+        _Kj.setZero(_k_dsp.size()+6, _k_dsp.size()+6);
+        _Kj.block(6,6,_k_dsp.size(),_k_dsp.size()) = _Kj_vec.asDiagonal();
     
-    _Dj.setZero(_d_dsp.size()+6, _d_dsp.size()+6);
-    _Dj.block(6,6,_d_dsp.size(),_d_dsp.size()) = _Dj_vec.asDiagonal();
+        _Dj.setZero(_d_dsp.size()+6, _d_dsp.size()+6);
+        _Dj.block(6,6,_d_dsp.size(),_d_dsp.size()) = _Dj_vec.asDiagonal();
+    }
+    else
+    {
+        _Kj.setZero(_k_dsp.size(), _k_dsp.size());
+        _Kj = _Kj_vec.asDiagonal();
+    
+        _Dj.setZero(_d_dsp.size(), _d_dsp.size());
+        _Dj = _Dj_vec.asDiagonal();
+    }
+        
     
     _Kj_ref = _Kj;
     _Dj_ref = _Dj;

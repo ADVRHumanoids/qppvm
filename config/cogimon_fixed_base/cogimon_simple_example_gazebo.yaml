@@ -1,9 +1,9 @@
 XBotCore:
-  config_path: "external/qppvm/config/cogimon_impedance.yaml" #"configs/ADVR_shared/cogimon/configs/cogimon_idle.yaml"  
+  config_path: "external/qppvm/config/cogimon_impedance.yaml"
 
 XBotInterface:
-  urdf_path: "configs/ADVR_shared/cogimon/urdf/cogimon.urdf"
-  srdf_path: "external/qppvm/config/cogimon.srdf"
+  urdf_path: "external/qppvm/config/cogimon_fixed_base/cogimon.urdf"
+  srdf_path: "external/qppvm/config/cogimon_gazebo.srdf"
   joint_map_path: "configs/ADVR_shared/cogimon/joint_map/cogimon_joint_map.yaml"
 
 RobotInterface:
@@ -11,7 +11,7 @@ RobotInterface:
 
 ModelInterface:
   model_type: "RBDL"
-  is_model_floating_base: "true"
+  is_model_floating_base: "false"
   
 MasterCommunicationInterface:
   framework_name: "ROS"
@@ -24,12 +24,8 @@ NRTPlugins:
   plugins: [] #"HomingExample"]
   
 TransmissionPlugins:
-  plugins: ["CogimonImpedanceAnkles"] #CogimonImpedanceAnkles CogimonAnkles
+  plugins: [] #["CogimonImpedanceAnkles"] #CogimonImpedanceAnkles CogimonAnkles
   
-WebServer:
-  enable: "true"
-  address: "10.24.5.100"
-  port: "8081"
 
 SimulationOptions:
   verbose_mode: "false"
@@ -44,4 +40,3 @@ CartesianInterface:
     Waist:
       type: "Cartesian"
       distal_link: "Waist"
-

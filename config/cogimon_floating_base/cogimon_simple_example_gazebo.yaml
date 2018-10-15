@@ -2,7 +2,7 @@ XBotCore:
   config_path: "external/qppvm/config/cogimon_impedance.yaml"
 
 XBotInterface:
-  urdf_path: "configs/ADVR_shared/cogimon/urdf/cogimon.urdf"
+  urdf_path: "external/qppvm/config/cogimon_floating_base/cogimon.urdf"
   srdf_path: "external/qppvm/config/cogimon_gazebo.srdf"
   joint_map_path: "configs/ADVR_shared/cogimon/joint_map/cogimon_joint_map.yaml"
 
