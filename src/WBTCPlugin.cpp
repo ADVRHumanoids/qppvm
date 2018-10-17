@@ -17,8 +17,8 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
 
     joint_impedance = boost::make_shared<OpenSoT::tasks::torque::JointImpedanceCtrl>(_q, _model);
     std::list<unsigned int> id = {0, 1, 2};
-    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_ankle", "Waist", id);
-    RFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("RFoot", _q, _model, "r_ankle", "Waist", id);
+    LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_ankle", "Waist");//, id);
+    RFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("RFoot", _q, _model, "r_ankle", "Waist");//, id);
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
@@ -85,7 +85,7 @@ bool WBTCController::control(Eigen::VectorXd& tau)
 //     _tau_opt.segment(6,6) = Jtf.segment(6,6);
     
     
-    tau = _tau_opt +  _h;
+    tau = _tau_opt;// +  _h;
 
     return true;
 }
@@ -188,6 +188,8 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _Dj_ref = _Dj;
 
     _K_Foot.setIdentity(6,6); _D_Foot.setIdentity(6,6);
+    _K_Foot.diagonal()<<1,1,1,0.25,0.25,0.25;
+    _D_Foot.diagonal()<<1,1,1,0.25,0.25,0.25;
     _K_Lfoot_ref = _K_Rfoot_ref = _K_Foot;
     _D_Lfoot_ref = _D_Rfoot_ref = _D_Foot;
     
@@ -233,7 +235,7 @@ void WBTCPlugin::on_start(double time)
 void WBTCPlugin::set_dyn_reconfigure_gains()
 {
     _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
-    _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
+    _Dj_ref = std::sqrt(_dynamic_reconfigure._joints_gain)*_Dj;
     controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
     
     _K_Lfoot_ref = _K_Rfoot_ref = _dynamic_reconfigure._stiffness_Feet_gain*_K_Foot;
