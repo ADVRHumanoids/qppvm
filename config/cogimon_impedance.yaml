@@ -42,7 +42,12 @@ HALInterface:
   ISensors:
    - [[18,28,147,157], "libXBotEcat_FT"]
    - [[91], "libXBotEcat_IMU"]
-  
+
+SCPLog:
+  remote_username: "lucamuratore"
+  remote_ip_address: "10.24.5.77"
+  remote_log_folder_path: "/home/lucamuratore/COGIMON_LOG"
+ 
 x_bot_ecat:
   name: XBotCore
   sdo_xddp_prefix :
