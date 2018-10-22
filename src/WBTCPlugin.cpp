@@ -19,6 +19,7 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     std::list<unsigned int> id = {0, 1, 2};
     LFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("LFoot", _q, _model, "l_ankle", "Waist");//, id);
     RFoot = boost::make_shared<OpenSoT::tasks::torque::CartesianImpedanceCtrl>("RFoot", _q, _model, "r_ankle", "Waist");//, id);
+    
 
     Eigen::VectorXd tau_lims;
     _model.getEffortLimits(tau_lims);
@@ -30,8 +31,8 @@ WBTCController::WBTCController(XBot::ModelInterface &model):
     }
     torque_lims = boost::make_shared<OpenSoT::constraints::torque::TorqueLimits>(tau_lims, -tau_lims);
     
-
     _autostack = ((LFoot+RFoot)/joint_impedance)<<torque_lims;
+//    _autostack = ((LFoot+RFoot)/joint_impedance)<<torque_lims;
 //    _autostack = boost::make_shared<OpenSoT::AutoStack>(joint_impedance);
 //    _autostack<<torque_lims;
 
@@ -64,7 +65,7 @@ bool WBTCController::control(Eigen::VectorXd& tau)
     _model.setJointVelocity(_qdot_filtered);
     _model.update();
     
-    _model.computeNonlinearTerm(_h);
+    //_model.computeNonlinearTerm(_h);
 
     _autostack->update(_q);
 
@@ -192,6 +193,8 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _D_Foot.diagonal()<<1,1,1,0.25,0.25,0.25;
     _K_Lfoot_ref = _K_Rfoot_ref = _K_Foot;
     _D_Lfoot_ref = _D_Rfoot_ref = _D_Foot;
+    _K_Waist_ref = _K_Waist = _K_Foot;
+    _D_Waist_ref = _D_Waist = _D_Foot;
     
     _use_offsets = true;
     
@@ -219,9 +222,12 @@ void WBTCPlugin::on_start(double time)
 
     _K_Lfoot_ref = _K_Rfoot_ref = _dynamic_reconfigure._stiffness_Feet_gain*_K_Foot;
     _D_Lfoot_ref = _D_Rfoot_ref = _dynamic_reconfigure._damping_Feet_gain*_D_Foot;
+    _K_Waist_ref = _dynamic_reconfigure._stiffness_Waist_gain*_K_Waist;
+    _D_Waist_ref = _dynamic_reconfigure._damping_Waist_gain*_D_Waist;
     
     controller->LFoot->setStiffnessDamping(_K_Lfoot_ref, _D_Lfoot_ref);
     controller->RFoot->setStiffnessDamping(_K_Rfoot_ref, _D_Rfoot_ref);
+    //controller->Waist->setStiffnessDamping(_K_Waist_ref, _D_Waist_ref);
                                                      
 
     log();
@@ -240,9 +246,12 @@ void WBTCPlugin::set_dyn_reconfigure_gains()
     
     _K_Lfoot_ref = _K_Rfoot_ref = _dynamic_reconfigure._stiffness_Feet_gain*_K_Foot;
     _D_Lfoot_ref = _D_Rfoot_ref = _dynamic_reconfigure._damping_Feet_gain*_D_Foot;
+    _K_Waist_ref = _dynamic_reconfigure._stiffness_Waist_gain*_K_Waist;
+    _D_Waist_ref = _dynamic_reconfigure._damping_Waist_gain*_D_Waist;
     
     controller->LFoot->setStiffnessDamping(_K_Lfoot_ref, _D_Lfoot_ref);
     controller->RFoot->setStiffnessDamping(_K_Rfoot_ref, _D_Rfoot_ref);
+    //controller->Waist->setStiffnessDamping(_K_Waist_ref, _D_Waist_ref);
 }
 
 void WBTCPlugin::control_loop(double time, double period)
@@ -289,6 +298,8 @@ void WBTCPlugin::log()
     _matlogger->add("D_Lfoot_ref", _D_Lfoot_ref);
     _matlogger->add("K_Rfoot_ref", _K_Rfoot_ref);
     _matlogger->add("D_Rfoot_ref", _D_Rfoot_ref);
+    _matlogger->add("K_Waist_ref", _K_Waist_ref);
+    _matlogger->add("D_Waist_ref", _D_Waist_ref);
     _matlogger->add("tau_offset", _tau_offset);
 }
 
@@ -312,15 +323,15 @@ dynamic_reconf::dynamic_reconf()
 void dynamic_reconf::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
 {
     _impedance_gain.store(config.impedance_gain);
-//    _stiffness_Waist_gain.store(config.stiffness_waist);
-//    _damping_Waist_gain.store(config.damping_waist);
+    _stiffness_Waist_gain.store(config.stiffness_waist);
+    _damping_Waist_gain.store(config.damping_waist);
     _stiffness_Feet_gain.store(config.stiffness_feet);
     _damping_Feet_gain.store(config.damping_feet);
     _joints_gain.store(config.joints_gain);
 
     Logger::info(Logger::Severity::HIGH, "\nSetting impedance gain to %f \n", config.impedance_gain);
     Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_gain);
-//    Logger::info(Logger::Severity::HIGH, "Setting waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
+    Logger::info(Logger::Severity::HIGH, "Setting waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
     Logger::info(Logger::Severity::HIGH, "Setting feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
 }
 
@@ -363,9 +374,18 @@ void WBTCPlugin::sync_cartesian_ifc(double time, double period)
     _ci->getPoseReference(controller->LFoot->getDistalLink(), T_ref);
     T_ref_matrix = T_ref.matrix();
     controller->LFoot->setReference(T_ref_matrix);
-    _ci->getPoseReference(controller->RFoot->getDistalLink(), T_ref);
-    T_ref_matrix = T_ref.matrix();
+    
+    static Eigen::MatrixXd T_R_matrix(4,4);
+    controller->RFoot->getActualPose(T_R_matrix);
+    T_ref_matrix(1,3) = T_R_matrix(1,3);
     controller->RFoot->setReference(T_ref_matrix);
+    
+//     _ci->getPoseReference(controller->RFoot->getDistalLink(), T_ref);
+//     T_ref_matrix = T_ref.matrix();
+//     controller->RFoot->setReference(T_ref_matrix);
+//     _ci->getPoseReference(controller->Waist->getDistalLink(), T_ref);
+//     T_ref_matrix = T_ref.matrix();
+//     controller->Waist->setReference(T_ref_matrix);
 }
 
 }

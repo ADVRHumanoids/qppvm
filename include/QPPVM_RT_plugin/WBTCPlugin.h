@@ -30,7 +30,7 @@ public:
     void log(XBot::MatLogger::Ptr logger);
 
     OpenSoT::tasks::torque::JointImpedanceCtrl::Ptr joint_impedance;
-    OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr LFoot, RFoot;
+    OpenSoT::tasks::torque::CartesianImpedanceCtrl::Ptr LFoot, RFoot, Waist;
     OpenSoT::constraints::torque::TorqueLimits::Ptr torque_lims;
 
 
@@ -67,6 +67,7 @@ public:
     std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
     std::atomic<double> _joints_gain; //Impedance GAINS in the joint impedance task
     std::atomic<double> _stiffness_Feet_gain, _damping_Feet_gain; //Impedance GAINS for the feet
+    std::atomic<double> _stiffness_Waist_gain, _damping_Waist_gain;
 
 };
 
@@ -97,8 +98,9 @@ private:
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
     Eigen::VectorXd _tau, _tau_ref, _tau_offset;
 
+    Eigen::MatrixXd _K_Waist, _D_Waist;
     Eigen::MatrixXd _K_Foot, _D_Foot;
-    Eigen::MatrixXd _K_Lfoot_ref, _D_Lfoot_ref, _K_Rfoot_ref, _D_Rfoot_ref;
+    Eigen::MatrixXd _K_Lfoot_ref, _D_Lfoot_ref, _K_Rfoot_ref, _D_Rfoot_ref, _K_Waist_ref, _D_Waist_ref;
 
     dynamic_reconf _dynamic_reconfigure;
     
