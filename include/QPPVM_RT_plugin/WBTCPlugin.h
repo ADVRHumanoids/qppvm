@@ -102,6 +102,7 @@ public:
 #endif
 
     OpenSoT::floating_base_estimation::qp_estimation::Ptr _floating_base_differential_kineamtics;
+    OpenSoT::floating_base_estimation::kinematic_estimation::Ptr _floating_base_forward_kinematics;
 
     void sense(const double dT);
 

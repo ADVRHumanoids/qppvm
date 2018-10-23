@@ -203,6 +203,9 @@ void WBTCPlugin::on_start(double time)
     _floating_base_differential_kineamtics = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(
                 _model, (*(_robot->getImu().begin())).second, links_in_contact);
 
+    _floating_base_forward_kinematics = boost::make_shared<OpenSoT::floating_base_estimation::kinematic_estimation>(
+                _model, links_in_contact[0]);
+
     _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
     _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
     controller->joint_impedance->setStiffnessDamping(_Kj_ref, _Dj_ref);
@@ -231,6 +234,11 @@ void WBTCPlugin::sense(const double dT)
     {
         if(!_floating_base_differential_kineamtics->update(dT))
             XBot::Logger::error("_floating_base_differential_kineamtics->update() returned false!");
+    }
+
+    if(_floating_base_forward_kinematics)
+    {
+        _floating_base_forward_kinematics->update();
     }
 
 #ifdef USE_GAZEBO_GROUND_TRUTH
