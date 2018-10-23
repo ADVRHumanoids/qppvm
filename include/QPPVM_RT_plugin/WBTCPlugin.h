@@ -17,6 +17,14 @@
 
 #include<atomic>
 
+#include <OpenSoT/utils/ForceOptimization.h>
+
+#define USE_GAZEBO_GROUND_TRUTH
+
+#ifdef USE_GAZEBO_GROUND_TRUTH
+    #include <GazeboXBotPlugin/FloatingBaseGroundTruth.h>
+#endif
+
 namespace opensot{
 class WBTCController{
 public:
@@ -49,10 +57,6 @@ private:
     OpenSoT::AutoStack::Ptr _autostack;
 
     OpenSoT::solvers::iHQP::Ptr _solver;
-    
-    
-    Eigen::MatrixXd J;
-    Eigen::VectorXd spring, damper, force, Jtf;
 
 };
 }
@@ -86,6 +90,13 @@ public:
     void sync_cartesian_ifc(double time, double period);
 
     opensot::WBTCController::Ptr controller;
+    OpenSoT::utils::ForceOptimization::Ptr forza_giusta;
+
+#ifdef USE_GAZEBO_GROUND_TRUTH
+    gazebo::FloatingBaseGroundTruth::Ptr _floating_base_ground_truth;
+#endif
+
+    void sense();
 
 private:
     XBot::MatLogger::Ptr _matlogger;
@@ -96,7 +107,8 @@ private:
     Eigen::MatrixXd _Kj, _Dj, _Kj_ref, _Dj_ref;
     Eigen::VectorXd _Kj_vec, _Dj_vec;
     Eigen::VectorXd _d_dsp, _d_dsp_ref;
-    Eigen::VectorXd _tau, _tau_ref, _tau_offset;
+    Eigen::VectorXd _tau, _tau_ref, _tau_offset, _tau_actuated;
+    std::vector<Eigen::Vector6d> _Fc;
 
     Eigen::MatrixXd _K_Waist, _D_Waist;
     Eigen::MatrixXd _K_Foot, _D_Foot;

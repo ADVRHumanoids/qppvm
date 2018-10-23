@@ -17,6 +17,7 @@ find_package(XCM REQUIRED)
 find_package(cartesian_interface REQUIRED)
 find_package(OpenSoT REQUIRED)
 find_package(dynamic_reconfigure_advr REQUIRED)
+find_package(FloatingBaseGroundTruth QUIET)
 
 #add dynamic reconfigure api
 find_package(catkin REQUIRED dynamic_reconfigure)
@@ -47,7 +48,7 @@ endif()
 # include
 include_directories(include
                     ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${dynamic_reconfigure_advr_INCLUDE_DIRS}
-                    ${cartesian_interface_INCLUDE_DIRS}
+                    ${cartesian_interface_INCLUDE_DIRS} ${FloatingBaseGroundTruth_INCLUDE_DIRS}
                     )
 
 ###########
@@ -76,7 +77,8 @@ endif()
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 #target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
-target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES})
+target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES}
+                                ${FloatingBaseGroundTruth_LIBRARIES})
 
 #############
 ## Install ##
