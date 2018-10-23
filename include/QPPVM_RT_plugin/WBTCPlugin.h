@@ -19,6 +19,8 @@
 
 #include <OpenSoT/utils/ForceOptimization.h>
 
+#include <OpenSoT/floating_base_estimation/qp_estimation.h>
+
 #define USE_GAZEBO_GROUND_TRUTH
 
 #ifdef USE_GAZEBO_GROUND_TRUTH
@@ -82,6 +84,7 @@ public:
 
     virtual bool init_control_plugin(XBot::Handle::Ptr handle);
     virtual void on_start(double time);
+    virtual void on_stop(double time);
     virtual void control_loop(double time, double period);
     virtual bool close();
 
@@ -94,9 +97,13 @@ public:
 
 #ifdef USE_GAZEBO_GROUND_TRUTH
     gazebo::FloatingBaseGroundTruth::Ptr _floating_base_ground_truth;
+    Eigen::Affine3d _floating_base_pose_gazebo;
+    Eigen::Vector6d _flaoting_base_velocity_gazebo;
 #endif
 
-    void sense();
+    OpenSoT::floating_base_estimation::qp_estimation::Ptr _floating_base_differential_kineamtics;
+
+    void sense(const double dT);
 
 private:
     XBot::MatLogger::Ptr _matlogger;
@@ -123,6 +130,8 @@ private:
     XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
     bool _first_sync_done;
     XBot::ModelInterface::Ptr _model;
+
+    double _start_time;
 
 
 };

@@ -187,18 +187,21 @@ bool WBTCPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _floating_base_ground_truth = std::make_shared<gazebo::FloatingBaseGroundTruth>(handle);
 #endif
 
-
     return true;
 }
 
 void WBTCPlugin::on_start(double time)
 {
-    sense();
+    sense(0.0);
 
     controller = boost::make_shared<opensot::WBTCController>(*_model);
+
     std::vector<std::string> links_in_contact = {"l_ankle","r_ankle"};
     Eigen::Vector6d F; F.setZero(); _Fc.push_back(F); _Fc.push_back(F);
     forza_giusta = boost::make_shared<OpenSoT::utils::ForceOptimization>(_model, links_in_contact);
+
+    _floating_base_differential_kineamtics = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(
+                _model, (*(_robot->getImu().begin())).second, links_in_contact);
 
     _Kj_ref = _dynamic_reconfigure._joints_gain*_Kj;
     _Dj_ref = _dynamic_reconfigure._joints_gain*_Dj;
@@ -218,18 +221,26 @@ void WBTCPlugin::on_start(double time)
     controller->log(_matlogger);
     
     _first_sync_done = false;
-    
-    
 }
 
-void WBTCPlugin::sense()
+void WBTCPlugin::sense(const double dT)
 {
     _model->syncFrom(*_robot, XBot::Sync::Position, XBot::Sync::Velocity, XBot::Sync::MotorSide);
 
+    if(_floating_base_differential_kineamtics)
+    {
+        if(!_floating_base_differential_kineamtics->update(dT))
+            XBot::Logger::error("_floating_base_differential_kineamtics->update() returned false!");
+    }
+
 #ifdef USE_GAZEBO_GROUND_TRUTH
-    _model->setFloatingBaseState(_floating_base_ground_truth->getFloatingBasePose(),
-                                _floating_base_ground_truth->getFloatingBaseTwist());
+       _floating_base_pose_gazebo =     _floating_base_ground_truth->getFloatingBasePose();
+       _flaoting_base_velocity_gazebo = _floating_base_ground_truth->getFloatingBaseTwist();
+//    _model->setFloatingBaseState(_floating_base_ground_truth->getFloatingBasePose(),
+//                                _floating_base_ground_truth->getFloatingBaseTwist());
 #endif
+
+
 
     _model->update();
 }
@@ -252,9 +263,9 @@ void WBTCPlugin::set_dyn_reconfigure_gains()
 
 void WBTCPlugin::control_loop(double time, double period)
 {
-    //controller->setFilter(period, 10.); //Matteo dice che 12 lo usano in COMAU
+    controller->setFilter(period, 10.); //Matteo dice che 12 lo usano in COMAU
     
-    sense();
+    sense(period);
 
     set_dyn_reconfigure_gains();
     sync_cartesian_ifc(time, period);
@@ -303,15 +314,23 @@ void WBTCPlugin::log()
     _matlogger->add("tau_actuated", _tau_actuated);
 
 #ifdef USE_GAZEBO_GROUND_TRUTH
-    if(_floating_base_ground_truth)
-        _floating_base_ground_truth->log();
+    if(_floating_base_ground_truth){
+        _matlogger->add("floating_base_pose_gazebo", _floating_base_pose_gazebo.matrix());
+    }   _matlogger->add("flaoting_base_velocity_gazebo",_flaoting_base_velocity_gazebo);
 #endif
+    if(_floating_base_differential_kineamtics)
+        _floating_base_differential_kineamtics->log(_matlogger);
 }
 
 bool WBTCPlugin::close()
 {
     _matlogger->flush();
     return true;
+}
+
+void WBTCPlugin::on_stop(double time)
+{
+    _matlogger->flush();
 }
 
 dynamic_reconf::dynamic_reconf()
