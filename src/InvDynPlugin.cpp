@@ -23,7 +23,6 @@
 #include <OpenSoT/constraints/GenericConstraint.h>
 #include <OpenSoT/tasks/MinimizeVariable.h>
 #include <OpenSoT/tasks/acceleration/Contact.h>
-#include <malloc_finder/malloc_finder.h>
 
 /* Specify that the class XBotPlugin::ForceAccExample is a XBot RT plugin with name "ForceAccExample" */
 REGISTER_XBOT_PLUGIN_(XBotPlugin::InvDynPlugin)
@@ -144,11 +143,16 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _sh_fb_vel.set(Eigen::Vector6d::Zero());
     _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
 
+    /* Init cartesian ifc */
+    YAML::Node yaml_file = YAML::LoadFile(handle->getPathToConfigFile());
+    XBot::Cartesian::ProblemDescription ik_problem(yaml_file["CartesianInterface"]["problem_description"], _model);
+    _ci = std::make_shared<XBot::Cartesian::CartesianInterfaceImpl>(_model, ik_problem);
+    _ci->enableOtg(0.002);
+    _sync_from_nrt = std::make_shared<XBot::Cartesian::Utils::SyncFromIO>("/xbotcore/cartesian_interface", handle->getSharedMemory());
+    
     return true;
     
-    XBot::Utils::MallocFinder::SetOnMalloc( XBot::Utils::MallocFinder::PrintBacktrace );
-    XBot::Utils::MallocFinder::SetThrowOnMalloc(true);
-    XBot::Utils::MallocFinder::SetThrowOnFree(true);
+    
 }
 
 void XBotPlugin::InvDynPlugin::on_start(double time)
@@ -163,6 +167,8 @@ void XBotPlugin::InvDynPlugin::on_start(double time)
     }
 
     _waist_task->resetReference();
+    
+    _first_sync_done = false;
 }
 
 void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
@@ -173,10 +179,10 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
     sync_model(period);
     
     set_gains();
-
-    XBot::Utils::MallocFinder::Enable();
+    
+    sync_cartesian_ifc(time, period);
+    
     solve();
-    XBot::Utils::MallocFinder::Disable();
 
     if(!ENABLE_FEEDBACK){
         
@@ -232,15 +238,17 @@ void XBotPlugin::InvDynPlugin::sync_model(double period)
 
 void XBotPlugin::InvDynPlugin::set_gains()
 {
-    _postural_task->setLambda(_dynreconfig._joints_lambda.load());
-    _waist_task->setLambda(_dynreconfig._waist_lambda.load());
+    _postural_task->setLambda(_dynreconfig._joints_lambda.load(), _dynreconfig._joints_lambda2.load());
+    _waist_task->setLambda(_dynreconfig._waist_lambda.load(), _dynreconfig._waist_lambda2.load());
+    _feet_cartesian[0]->setLambda(_dynreconfig._feet_lambda.load(), _dynreconfig._feet_lambda2.load());
+    _feet_cartesian[1]->setLambda(_dynreconfig._feet_lambda.load(), _dynreconfig._feet_lambda2.load());
 }
 
 
 void XBotPlugin::InvDynPlugin::solve()
 {
     /* Update stack */
-    _autostack->update(Eigen::VectorXd::Zero(0));
+    _autostack->update(_x);
 
     /* Solve QP */
     _x.setZero(_x.size());
@@ -273,30 +281,93 @@ void XBotPlugin::InvDynPlugin::integrate(double period)
 
 XBotPlugin::DynReconfigure::DynReconfigure()
 {
-    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig>::CallbackType f;
+    dynamic_reconfigure_advr::Server<InvDyn::InvDynConfig>::CallbackType f;
     f = boost::bind(&DynReconfigure::cfg_callback, this, _1, _2);
     _server.setCallback(f);
     
     _impedance_gain.store(1.0);
-    _joints_lambda.store(10.0);
-    _waist_lambda.store(10.0);
-    _stiffness_Feet_gain.store(0.0);
-    _damping_Feet_gain.store(0.0);
+    _joints_lambda.store(0.0);
+    _waist_lambda.store(0.0);
+    _feet_lambda.store(0.0);
+    _joints_lambda2.store(0.0);
+    _waist_lambda2.store(0.0);
+    _feet_lambda2.store(0.0);
 }
 
-void XBotPlugin::DynReconfigure::cfg_callback(QPPVM_RT_plugin::QppvmConfig& config, uint32_t level)
+void XBotPlugin::DynReconfigure::cfg_callback(InvDyn::InvDynConfig& config, uint32_t level)
 {
     _impedance_gain.store(config.impedance_gain);
-    _stiffness_Waist_gain.store(config.stiffness_waist);
-    _damping_Waist_gain.store(config.damping_waist);
-    _stiffness_Feet_gain.store(config.stiffness_feet);
-    _damping_Feet_gain.store(config.damping_feet);
-    _joints_lambda.store(config.joints_lambda);
-    _waist_lambda.store(config.waist_lambda);
+    _joints_lambda.store(config.joints_lambda_pos);
+    _waist_lambda.store(config.waist_lambda_pos);
+    _feet_lambda.store(config.feet_lambda_pos);
+    _joints_lambda2.store(config.joints_lambda_vel);
+    _waist_lambda2.store(config.waist_lambda_vel);
+    _feet_lambda2.store(config.feet_lambda_vel);
 
     Logger::info(Logger::Severity::HIGH, "\nSetting impedance gain to %f \n", config.impedance_gain);
-    Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f \n", config.joints_lambda);
-    Logger::info(Logger::Severity::HIGH, "Setting waist gain to %f \n", config.waist_lambda);
-    Logger::info(Logger::Severity::HIGH, "Setting waist stiffness gain to %f and damping gain to %f\n", config.stiffness_waist, config.damping_waist);
-    Logger::info(Logger::Severity::HIGH, "Setting feet stiffness gain to %f and damping gain to %f\n", config.stiffness_feet, config.damping_feet);
+    
+    Logger::info(Logger::Severity::HIGH, "Setting joints gain to %f, %f \n", 
+                 config.joints_lambda_pos, config.joints_lambda_vel);
+    
+    Logger::info(Logger::Severity::HIGH, "Setting waist gain to %f, %f \n", config.waist_lambda_pos, config.waist_lambda_vel);
+    
+    Logger::info(Logger::Severity::HIGH, "Setting feet gain to %f, %f \n", config.feet_lambda_pos, config.feet_lambda_vel);
 }
+
+void XBotPlugin::InvDynPlugin::sync_cartesian_ifc(double time, double period)
+{
+    /* Sync cartesian references from ROS */
+    
+    if(!_first_sync_done)
+    {
+        if(_sync_from_nrt->try_reset(_model, time))
+        {
+            _first_sync_done = true;
+            XBot::Logger::info(Logger::Severity::HIGH, "Resetting NRT CI \n");
+        }
+    }
+    
+    if(_first_sync_done)
+    {
+        _sync_from_nrt->try_sync(time, period, _ci, _model);
+    }
+    
+
+    if(!_ci->update(time, period))
+    {
+        XBot::Logger::error("CartesianInterface: unable to solve \n");
+        return;
+    }
+    
+    
+    /* Update qppvm references */
+    Eigen::Affine3d T_ref;
+    if(_ci->getPoseReference(_waist_task->getDistalLink(), T_ref) )
+    {
+        if(_ci->getBaseLink(_waist_task->getDistalLink()) == _waist_task->getBaseLink() )
+        {
+            _waist_task->setReference(T_ref);
+        }
+    }
+    
+    if(_ci->getPoseReference(_feet_cartesian[0]->getDistalLink(), T_ref) )
+    {
+        if(_ci->getBaseLink(_feet_cartesian[0]->getDistalLink()) == _feet_cartesian[0]->getBaseLink() )
+        {
+            _feet_cartesian[0]->setReference(T_ref);
+        }
+    }
+    
+    if(_ci->getPoseReference(_feet_cartesian[1]->getDistalLink(), T_ref) )
+    {
+        if(_ci->getBaseLink(_feet_cartesian[1]->getDistalLink()) == _feet_cartesian[1]->getBaseLink() )
+        {
+            _feet_cartesian[1]->setReference(T_ref);
+        }
+    }
+
+}
+
+
+
+

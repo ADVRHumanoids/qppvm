@@ -30,7 +30,8 @@
 #include <OpenSoT/floating_base_estimation/qp_estimation.h>
 #include <atomic>
 #include <dynamic_reconfigure_advr/server.h>
-#include <QPPVM_RT_plugin/QppvmConfig.h>
+#include <QPPVM_RT_plugin/InvDynConfig.h>
+#include <cartesian_interface/CartesianPlugin/Utils.h>
 
 namespace XBotPlugin {
     
@@ -41,14 +42,13 @@ public:
     
     DynReconfigure();
 
-    dynamic_reconfigure_advr::Server<QPPVM_RT_plugin::QppvmConfig> _server;
+    dynamic_reconfigure_advr::Server<InvDyn::InvDynConfig> _server;
     
-    void cfg_callback(QPPVM_RT_plugin::QppvmConfig &config, uint32_t level);
+    void cfg_callback(InvDyn::InvDynConfig &config, uint32_t level);
     
-    std::atomic<double> _impedance_gain; //Impedance GAINS in the DSPs
-    std::atomic<double> _joints_lambda, _waist_lambda; //Impedance GAINS in the joint impedance task
-    std::atomic<double> _stiffness_Feet_gain, _damping_Feet_gain; //Impedance GAINS for the feet
-    std::atomic<double> _stiffness_Waist_gain, _damping_Waist_gain;
+    std::atomic<double> _impedance_gain;
+    std::atomic<double> _joints_lambda, _waist_lambda, _feet_lambda; 
+    std::atomic<double> _joints_lambda2, _waist_lambda2, _feet_lambda2; 
 
 };
 
@@ -81,6 +81,7 @@ private:
     void set_gains();
     void solve();
     void integrate(double period);
+    void sync_cartesian_ifc(double time, double period);
 
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
     XBot::SharedObject<Eigen::Vector6d> _sh_fb_vel;
@@ -112,6 +113,9 @@ private:
     
     DynReconfigure _dynreconfig;
 
+    XBot::Cartesian::CartesianInterfaceImpl::Ptr _ci;
+    XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
+    bool _first_sync_done;
 };
 
 }
