@@ -55,6 +55,7 @@ include_directories(include
 ## Build ##
 ###########
 #add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
+add_library(InvDynPlugin SHARED src/InvDynPlugin.cpp include)
 #add_library(ForceAccPlugin SHARED src/ForceAcc.cpp include)
 add_library(WBTCPlugin SHARED src/WBTCPlugin.cpp include)
 #add_library(GcompPlugin SHARED src/GcompPlugin.cpp include)
@@ -64,6 +65,7 @@ add_library(WBTCPlugin SHARED src/WBTCPlugin.cpp include)
 
 if ( Xenomai_FOUND )
 #      set_xeno_flags(GcompFixedBase)
+    set_xeno_flags(InvDynPlugin)
 #     set_xeno_flags(QPPVMPlugin)
       set_xeno_flags(WBTCPlugin)
 endif()
@@ -80,6 +82,8 @@ endif()
 target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES}
                                 ${FloatingBaseGroundTruth_LIBRARIES})
 
+target_link_libraries(InvDynPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES}
+                                ${FloatingBaseGroundTruth_LIBRARIES} malloc_finder)
 #############
 ## Install ##
 #############
@@ -89,6 +93,7 @@ target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_
 # ycm_library_install(GcompPlugin 1 0 0)
 # ycm_library_install(TorqueJump 1 0 0)
 #ycm_library_install(GcompFixedBase 1 0 0)
+ycm_library_install(InvDynPlugin 1 0 0)
 ycm_library_install(WBTCPlugin 1 0 0)
 
 include(AddUninstallTarget)
