@@ -21,7 +21,7 @@
 
 #include <OpenSoT/floating_base_estimation/qp_estimation.h>
 
-#define USE_GAZEBO_GROUND_TRUTH
+//#define USE_GAZEBO_GROUND_TRUTH
 
 #ifdef USE_GAZEBO_GROUND_TRUTH
     #include <GazeboXBotPlugin/FloatingBaseGroundTruth.h>

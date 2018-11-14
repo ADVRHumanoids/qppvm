@@ -32,6 +32,7 @@
 #include <dynamic_reconfigure_advr/server.h>
 #include <QPPVM_RT_plugin/InvDynConfig.h>
 #include <cartesian_interface/CartesianPlugin/Utils.h>
+#include <OpenSoT/tasks/force/CoM.h>
 
 namespace XBotPlugin {
     
@@ -79,13 +80,15 @@ private:
     
     void sync_model(double period);
     void set_gains();
-    void solve();
+    void solve(double period);
     void integrate(double period);
     void sync_cartesian_ifc(double time, double period);
 
     XBot::SharedObject<Eigen::Vector3d> _sh_fb_pos;
     XBot::SharedObject<Eigen::Vector6d> _sh_fb_vel;
     OpenSoT::floating_base_estimation::qp_estimation::Ptr _fbest;
+    OpenSoT::floating_base_estimation::kinematic_estimation::Ptr _fbest_kinematics;
+    
 
     OpenSoT::utils::InverseDynamics::Ptr _invdyn;
 
@@ -103,8 +106,11 @@ private:
     std::vector<std::string> _contact_links;
     Eigen::VectorXd _x, _q, _qdot, _tau, _qddot;
 
+
     OpenSoT::tasks::acceleration::Cartesian::Ptr _waist_task;
     OpenSoT::tasks::acceleration::Postural::Ptr _postural_task;
+    OpenSoT::tasks::force::CoM::Ptr _com_task;
+    Eigen::Vector3d g;
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
 
@@ -116,6 +122,14 @@ private:
     XBot::Cartesian::CartesianInterfaceImpl::Ptr _ci;
     XBot::Cartesian::Utils::SyncFromIO::Ptr _sync_from_nrt;
     bool _first_sync_done;
+    
+    Eigen::VectorXd _tau_offset;
+    
+    Eigen::VectorXd _qdot_filtered;
+    double _alpha_filter;
+    double _period;
+    double _cut_off_freq;
+    void setFilter(const double period, const double cut_off_freq);
 };
 
 }

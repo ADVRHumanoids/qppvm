@@ -17,7 +17,7 @@ MasterCommunicationInterface:
   framework_name: "ROS"
 
 XBotRTPlugins:
-  plugins: ["HomingExample", "WBTCPlugin"] #"QPPVMPlugin"] #, "XBotRTCommunication"] 
+  plugins: ["HomingExample", "InvDynPlugin"] #"QPPVMPlugin"] #, "XBotRTCommunication"] 
   io_plugins: ["CartesianIO"]
   
 NRTPlugins:
@@ -38,11 +38,21 @@ CartesianInterface:
   solver: "OpenSot"
   problem_description:
     stack:
-      - ["LFoot"]
+      - ["Waist", "LFoot", "RFoot"]
     constraints: []
+
+    Waist:
+      type: "Cartesian"
+      distal_link: "Waist"
+      base_link: "world"
 
     LFoot:
       type: "Cartesian"
-      distal_link: "l_ankle"
-      base_link: "Waist"
+      distal_link: "l_sole"
+      base_link: "world"
+
+    RFoot:
+      type: "Cartesian"
+      distal_link: "r_sole"
+      base_link: "world"
 

@@ -23,6 +23,7 @@ find_package(FloatingBaseGroundTruth QUIET)
 find_package(catkin REQUIRED dynamic_reconfigure)
 generate_dynamic_reconfigure_options(
   cfg/Qppvm.cfg
+  cfg/InvDyn.cfg
 )
 
 set(ENABLE_XENO CACHE BOOL "ON")
@@ -57,7 +58,7 @@ include_directories(include
 #add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 add_library(InvDynPlugin SHARED src/InvDynPlugin.cpp include)
 #add_library(ForceAccPlugin SHARED src/ForceAcc.cpp include)
-add_library(WBTCPlugin SHARED src/WBTCPlugin.cpp include)
+#add_library(WBTCPlugin SHARED src/WBTCPlugin.cpp include)
 #add_library(GcompPlugin SHARED src/GcompPlugin.cpp include)
 #add_library(TorqueJump SHARED src/TorqueJump.cpp include)
 #add_executable(ModelValidationTest src/ModelValidationTest.cpp)
@@ -67,7 +68,7 @@ if ( Xenomai_FOUND )
 #      set_xeno_flags(GcompFixedBase)
     set_xeno_flags(InvDynPlugin)
 #     set_xeno_flags(QPPVMPlugin)
-      set_xeno_flags(WBTCPlugin)
+      #set_xeno_flags(WBTCPlugin)
 endif()
 
 ##########
@@ -79,11 +80,11 @@ endif()
 # target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
 #target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
 #target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
-target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES}
-                                ${FloatingBaseGroundTruth_LIBRARIES})
+#target_link_libraries(WBTCPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES}
+#                                ${FloatingBaseGroundTruth_LIBRARIES})
 
 target_link_libraries(InvDynPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catkin_LIBRARIES} ${cartesian_interface_LIBRARIES}
-                                ${FloatingBaseGroundTruth_LIBRARIES} malloc_finder)
+                                ${FloatingBaseGroundTruth_LIBRARIES}) # malloc_finder)
 #############
 ## Install ##
 #############
@@ -94,6 +95,6 @@ target_link_libraries(InvDynPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${catki
 # ycm_library_install(TorqueJump 1 0 0)
 #ycm_library_install(GcompFixedBase 1 0 0)
 ycm_library_install(InvDynPlugin 1 0 0)
-ycm_library_install(WBTCPlugin 1 0 0)
+#ycm_library_install(WBTCPlugin 1 0 0)
 
 include(AddUninstallTarget)

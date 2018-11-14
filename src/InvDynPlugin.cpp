@@ -41,17 +41,31 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _robot->getStiffness(_k0);
     _robot->getDamping(_d0);
 
-    _imu = _robot->getImu().begin()->second;
-
+    
     _model = XBot::ModelInterface::getModel(_xbot_handle->getPathToConfigFile());
+    _model->initLog(_logger, 1e5);
 
     Eigen::VectorXd qhome;
     _model->getRobotState("home", qhome);
     _model->setJointPosition(qhome);
     _model->update();
+    
+    
+    
+    if(!_model->getRobotState("torque_offset", _tau_offset))
+        _tau_offset.setZero(_model->getJointNum());
+    
 
-    _contact_links = {"l_ankle", "r_ankle"};
-
+    //_contact_links = {"l_wrist", "r_wrist"};
+    _contact_links = {"l_sole", "r_sole"};
+    
+    std::string anchor_link = _contact_links[1];
+    std::string fb_link; _model->getFloatingBaseLink(fb_link);
+    
+    Eigen::Affine3d p; _model->getPose(anchor_link,fb_link,p);
+    _model->setFloatingBasePose(p);
+    _model->update();
+    
     _invdyn = boost::make_shared<OpenSoT::utils::InverseDynamics>(_contact_links, *_model);
 
     using TypeConstraint = OpenSoT::constraints::GenericConstraint::Type;
@@ -65,16 +79,17 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
             boost::make_shared<OpenSoT::tasks::acceleration::Cartesian>(cl + "_cartesian",
                                                                         *_model,
                                                                         cl,
-                                                                        "world",
+                                                                        "world",//"DWYTorso",
                                                                         _invdyn->getJointsAccelerationAffine())
                                  );
 
 
 
     }
+    
 
     Eigen::VectorXd qddot_max;
-    qddot_max.setConstant(_invdyn->getJointsAccelerationAffine().getOutputSize(), 50);
+    qddot_max.setConstant(_invdyn->getJointsAccelerationAffine().getOutputSize(), 300);
 
     auto qddot_lims = boost::make_shared<OpenSoT::constraints::GenericConstraint>("qddot_limit", 
                                                                                   _invdyn->getJointsAccelerationAffine(), 
@@ -101,17 +116,25 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
     _waist_task = boost::make_shared<OpenSoT::tasks::acceleration::Cartesian>("waist_task",
                                                                         *_model,
-                                                                        floating_base_name,
+                                                                        "Waist",
                                                                         "world",
                                                                         _invdyn->getJointsAccelerationAffine());
-
+    
+    _com_task = boost::make_shared<OpenSoT::tasks::force::CoM>(_invdyn->getContactsWrenchAffine(),
+                                                               _contact_links, *_model);
+    g.setZero(); g[2] = -9.81;
+    Eigen::Vector3d com_ref = _com_task->getLinearReference();
+    _com_task->setLinearReference(g, Eigen::Vector3d::Zero(), com_ref);
+    
 
     std::list<uint> pos_idx = {0,1,2};
     std::list<uint> or_idx = {3,4,5};
 
-    _autostack = (( feet_cart_aggr + _waist_task  ) / ( _postural_task ));
-
+    _autostack = ( feet_cart_aggr/  (_waist_task)  /  _postural_task );
     _autostack << _dyn_feas << qddot_lims;
+//     _autostack = boost::make_shared<OpenSoT::AutoStack>(_postural_task);
+//     _autostack = ((feet_cart_aggr) / ( _postural_task ));
+    _autostack <<  qddot_lims;
 
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(),
                                                          _autostack->getBounds(),
@@ -133,15 +156,26 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _model->getJointPosition(_q);
     _model->getJointVelocity(_qdot);
     _qddot.setZero(_model->getJointNum());
-    _tau = _q;
+    _tau = _q; _tau.setZero(_tau.size());
     _x.setZero(_invdyn->getSerializer()->getSize());
     
+//     _qdot_filtered = _qdot;
+//     _alpha_filter = 1.;
     
     _sh_fb_pos = handle->getSharedMemory()->getSharedObject<Eigen::Vector3d>("/gazebo/floating_base_position");
     _sh_fb_vel = handle->getSharedMemory()->getSharedObject<Eigen::Vector6d>("/gazebo/floating_base_velocity");
     _sh_fb_pos.set(Eigen::Vector3d::Zero());
     _sh_fb_vel.set(Eigen::Vector6d::Zero());
-    _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
+    _imu = _robot->getImu().begin()->second;
+    
+    //_fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
+    //_fbest->update(0.0);
+    
+    Eigen::Affine3d fb_T_world, fb_T_anchor;
+    _model->getFloatingBasePose(fb_T_world);
+    _model->getPose(anchor_link, fb_link, fb_T_anchor);
+    _fbest_kinematics = boost::make_shared<OpenSoT::floating_base_estimation::kinematic_estimation>(
+        _model, anchor_link, fb_T_world.inverse()*fb_T_anchor);
 
     /* Init cartesian ifc */
     YAML::Node yaml_file = YAML::LoadFile(handle->getPathToConfigFile());
@@ -168,11 +202,18 @@ void XBotPlugin::InvDynPlugin::on_start(double time)
 
     _waist_task->resetReference();
     
+    Eigen::Vector3d com_ref; _model->getCOM(com_ref);
+    _com_task->setLinearReference(g, Eigen::Vector3d::Zero(), com_ref);
+
+    
     _first_sync_done = false;
+    
 }
 
 void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
 {
+    
+    _model->log(_logger,time);
     
     const bool ENABLE_FEEDBACK = true;
     
@@ -182,7 +223,10 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
     
     sync_cartesian_ifc(time, period);
     
-    solve();
+    Eigen::Vector3d com_ref = _com_task->getLinearReference();
+    _com_task->setLinearReference(g, Eigen::Vector3d::Zero(), com_ref);
+    
+    solve(period);
 
     if(!ENABLE_FEEDBACK){
         
@@ -196,7 +240,7 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
         double d_factor = std::sqrt(k_factor);
 
         _k = _k0 * k_factor;
-        _d = _d0 * d_factor;
+        _d = _d0;// * d_factor;
 
         _robot->setStiffness(_k);
         _robot->setDamping(_d);
@@ -204,10 +248,11 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
     }
 
     
-    _logger->add("x", _x);
     
     _robot->move();
     
+    _logger->add("x", _x);
+    _autostack->log(_logger);
     
 
 }
@@ -215,9 +260,28 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
 
 void XBotPlugin::InvDynPlugin::sync_model(double period)
 {
-        _model->syncFrom(*_robot, XBot::Sync::MotorSide, XBot::Sync::Position, XBot::Sync::Velocity);
+        _model->syncFrom(*_robot, /*XBot::Sync::MotorSide,*/ XBot::Sync::Position, XBot::Sync::Velocity);
         
-        _fbest->update(period);
+        //HERE WE FILTER and we apply the filtered velocities to the model
+//     setFilter(period, 10.);
+//     _model->getJointVelocity(_qdot);
+//     _qdot_filtered.noalias() = _alpha_filter*_qdot + (1.-_alpha_filter)*_qdot_filtered;
+//     _model->setJointVelocity(_qdot_filtered);
+//     _model->update();
+//     _logger->add("qdot", _qdot);
+//     _logger->add("qdot_filtered", _qdot_filtered);
+        
+       // _fbest->update(period);
+       // _fbest->log(_logger);
+        
+        _fbest_kinematics->update(true);
+//          Eigen::Affine3d fb_T_world_corrected;
+//          _model->getFloatingBasePose(fb_T_world_corrected);
+//          fb_T_world_corrected.translation() = _fbest_kinematics->getFloatingBasePose().translation();
+//          _model->setFloatingBasePose(fb_T_world_corrected);
+//          _model->update();
+//         
+        
 
 //         Eigen::Affine3d w_T_fb;
 //         Eigen::Matrix3d w_R_fb;
@@ -244,9 +308,16 @@ void XBotPlugin::InvDynPlugin::set_gains()
     _feet_cartesian[1]->setLambda(_dynreconfig._feet_lambda.load(), _dynreconfig._feet_lambda2.load());
 }
 
-
-void XBotPlugin::InvDynPlugin::solve()
+void XBotPlugin::InvDynPlugin::setFilter(const double period, const double cut_off_freq)
 {
+    _period = period;
+    _cut_off_freq = cut_off_freq;
+    _alpha_filter = 1-std::exp(-2.*M_PI*cut_off_freq*period);
+}
+
+
+void XBotPlugin::InvDynPlugin::solve(double period)
+{   
     /* Update stack */
     _autostack->update(_x);
 
@@ -260,7 +331,19 @@ void XBotPlugin::InvDynPlugin::solve()
 
     /* Compute torque */
     _invdyn->computedTorque(_x, _tau, _qddot);
+    _tau += _tau_offset;
+
+    /* Ramp the torque reference continuously */
+    static int iter = 0;
+    const int ITER_MAX = 1000;
+    if(iter < ITER_MAX)
+    {
+        _tau *= iter/double(ITER_MAX);
+        iter++;
+    }
+    
     _model->setJointEffort(_tau);
+    
 }
 
 
@@ -287,11 +370,11 @@ XBotPlugin::DynReconfigure::DynReconfigure()
     
     _impedance_gain.store(1.0);
     _joints_lambda.store(0.0);
-    _waist_lambda.store(0.0);
-    _feet_lambda.store(0.0);
-    _joints_lambda2.store(0.0);
-    _waist_lambda2.store(0.0);
-    _feet_lambda2.store(0.0);
+    _waist_lambda.store(0.);
+    _feet_lambda.store(0.);
+    _joints_lambda2.store(.0);
+    _waist_lambda2.store(.0);
+    _feet_lambda2.store(.0);
 }
 
 void XBotPlugin::DynReconfigure::cfg_callback(InvDyn::InvDynConfig& config, uint32_t level)
