@@ -24,6 +24,7 @@
 #include <OpenSoT/tasks/MinimizeVariable.h>
 #include <OpenSoT/tasks/acceleration/Contact.h>
 
+
 /* Specify that the class XBotPlugin::ForceAccExample is a XBot RT plugin with name "ForceAccExample" */
 REGISTER_XBOT_PLUGIN_(XBotPlugin::InvDynPlugin)
 
@@ -100,6 +101,12 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
     _postural_task = boost::make_shared<OpenSoT::tasks::acceleration::Postural>(*_model,
                                                                                 _invdyn->getJointsAccelerationAffine());
+    
+    
+
+    auto min_wrench_lsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_lsole", _invdyn->getContactsWrenchAffine()[0]);
+    auto min_wrench_rsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_rsole", _invdyn->getContactsWrenchAffine()[1]);
+    
 
 
 
@@ -128,7 +135,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     std::list<uint> pos_idx = {0,1,2};
     std::list<uint> or_idx = {3,4,5};
 
-    _autostack = ( feet_cart_aggr/  (_waist_task%or_idx + _com_task%pos_idx)  /  _postural_task );
+    _autostack = ( feet_cart_aggr/  (_waist_task%or_idx + _com_task%pos_idx)  /  (_postural_task + 0.1*min_wrench_lsole + 0.1*min_wrench_rsole));
     _autostack << _dyn_feas << qddot_lims;
 //     _autostack = boost::make_shared<OpenSoT::AutoStack>(_postural_task);
 //     _autostack = ((feet_cart_aggr) / ( _postural_task ));
@@ -270,6 +277,8 @@ void XBotPlugin::InvDynPlugin::sync_model(double period)
        // _fbest->log(_logger);
         
         _fbest_kinematics->update(true);
+        Eigen::Matrix4d fbest = _fbest_kinematics->getFloatingBasePose().matrix();
+        _logger->add("_fbest_kinematics", fbest);
 //          Eigen::Affine3d fb_T_world_corrected;
 //          _model->getFloatingBasePose(fb_T_world_corrected);
 //          fb_T_world_corrected.translation() = _fbest_kinematics->getFloatingBasePose().translation();
@@ -450,6 +459,12 @@ void XBotPlugin::InvDynPlugin::sync_cartesian_ifc(double time, double period)
         {
             _feet_cartesian[1]->setReference(T_ref);
         }
+    }
+    
+    Eigen::Vector3d com_ref;
+    if(_ci->getComPositionReference(com_ref))
+    {
+        _com_task->setLinearReference(com_ref);
     }
 
 }
