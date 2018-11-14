@@ -44,11 +44,10 @@ CartesianInterface:
 
     LFoot:
       type: "Cartesian"
-      distal_link: "l_ankle"
-      base_link: "world"
-    
-    RFoot:
-      type: "Cartesian"
-      distal_link: "r_ankle"
+      distal_link: "l_sole"
       base_link: "world"
 
+    RFoot:
+      type: "Cartesian"
+      distal_link: "r_sole"
+      base_link: "world"

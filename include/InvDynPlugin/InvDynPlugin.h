@@ -48,8 +48,8 @@ public:
     void cfg_callback(InvDyn::InvDynConfig &config, uint32_t level);
     
     std::atomic<double> _impedance_gain;
-    std::atomic<double> _joints_lambda, _waist_lambda, _feet_lambda; 
-    std::atomic<double> _joints_lambda2, _waist_lambda2, _feet_lambda2; 
+    std::atomic<double> _joints_lambda, _waist_lambda, _feet_lambda, _com_lambda;
+    std::atomic<double> _joints_lambda2, _waist_lambda2, _feet_lambda2, _com_lambda2;
 
 };
 

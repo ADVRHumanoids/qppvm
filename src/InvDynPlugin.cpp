@@ -122,15 +122,13 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     
     _com_task = boost::make_shared<OpenSoT::tasks::force::CoM>(_invdyn->getContactsWrenchAffine(),
                                                                _contact_links, *_model);
-    g.setZero(); g[2] = -9.81;
-    Eigen::Vector3d com_ref = _com_task->getLinearReference();
-    _com_task->setLinearReference(g, Eigen::Vector3d::Zero(), com_ref);
-    
+    _com_task->setLambda(1e-4 , 0., 0.);
+
 
     std::list<uint> pos_idx = {0,1,2};
     std::list<uint> or_idx = {3,4,5};
 
-    _autostack = ( feet_cart_aggr/  (_waist_task)  /  _postural_task );
+    _autostack = ( feet_cart_aggr/  (_waist_task%or_idx + _com_task%pos_idx)  /  _postural_task );
     _autostack << _dyn_feas << qddot_lims;
 //     _autostack = boost::make_shared<OpenSoT::AutoStack>(_postural_task);
 //     _autostack = ((feet_cart_aggr) / ( _postural_task ));
@@ -202,8 +200,8 @@ void XBotPlugin::InvDynPlugin::on_start(double time)
 
     _waist_task->resetReference();
     
-    Eigen::Vector3d com_ref; _model->getCOM(com_ref);
-    _com_task->setLinearReference(g, Eigen::Vector3d::Zero(), com_ref);
+
+    _com_task->reset();
 
     
     _first_sync_done = false;
@@ -222,9 +220,6 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
     set_gains();
     
     sync_cartesian_ifc(time, period);
-    
-    Eigen::Vector3d com_ref = _com_task->getLinearReference();
-    _com_task->setLinearReference(g, Eigen::Vector3d::Zero(), com_ref);
     
     solve(period);
 
@@ -306,6 +301,8 @@ void XBotPlugin::InvDynPlugin::set_gains()
     _waist_task->setLambda(_dynreconfig._waist_lambda.load(), _dynreconfig._waist_lambda2.load());
     _feet_cartesian[0]->setLambda(_dynreconfig._feet_lambda.load(), _dynreconfig._feet_lambda2.load());
     _feet_cartesian[1]->setLambda(_dynreconfig._feet_lambda.load(), _dynreconfig._feet_lambda2.load());
+
+    _com_task->setLambda(_dynreconfig._com_lambda.load(), _dynreconfig._com_lambda2.load(), 0.0);
 }
 
 void XBotPlugin::InvDynPlugin::setFilter(const double period, const double cut_off_freq)
@@ -372,9 +369,11 @@ XBotPlugin::DynReconfigure::DynReconfigure()
     _joints_lambda.store(0.0);
     _waist_lambda.store(0.);
     _feet_lambda.store(0.);
+    _com_lambda.store(0.);
     _joints_lambda2.store(.0);
     _waist_lambda2.store(.0);
     _feet_lambda2.store(.0);
+    _com_lambda2.store(0.);
 }
 
 void XBotPlugin::DynReconfigure::cfg_callback(InvDyn::InvDynConfig& config, uint32_t level)
@@ -383,9 +382,11 @@ void XBotPlugin::DynReconfigure::cfg_callback(InvDyn::InvDynConfig& config, uint
     _joints_lambda.store(config.joints_lambda_pos);
     _waist_lambda.store(config.waist_lambda_pos);
     _feet_lambda.store(config.feet_lambda_pos);
+    _com_lambda.store(config.com_lambda_pos);
     _joints_lambda2.store(config.joints_lambda_vel);
     _waist_lambda2.store(config.waist_lambda_vel);
     _feet_lambda2.store(config.feet_lambda_vel);
+    _com_lambda2.store(config.com_lambda_vel);
 
     Logger::info(Logger::Severity::HIGH, "\nSetting impedance gain to %f \n", config.impedance_gain);
     
@@ -395,6 +396,8 @@ void XBotPlugin::DynReconfigure::cfg_callback(InvDyn::InvDynConfig& config, uint
     Logger::info(Logger::Severity::HIGH, "Setting waist gain to %f, %f \n", config.waist_lambda_pos, config.waist_lambda_vel);
     
     Logger::info(Logger::Severity::HIGH, "Setting feet gain to %f, %f \n", config.feet_lambda_pos, config.feet_lambda_vel);
+
+    Logger::info(Logger::Severity::HIGH, "Setting com gain to %f, %f \n", config.com_lambda_pos, config.com_lambda_vel);
 }
 
 void XBotPlugin::InvDynPlugin::sync_cartesian_ifc(double time, double period)
