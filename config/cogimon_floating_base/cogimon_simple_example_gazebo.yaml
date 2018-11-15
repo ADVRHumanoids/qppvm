@@ -34,7 +34,7 @@ CartesianInterface:
   solver: "OpenSot"
   problem_description:
     stack:
-      - ["Waist", "LFoot", "RFoot"]
+      - ["Waist", "LFoot", "RFoot", "CoM"]
     constraints: []
 
     Waist:
@@ -51,3 +51,7 @@ CartesianInterface:
       type: "Cartesian"
       distal_link: "r_sole"
       base_link: "world"
+
+    CoM:
+      type: "Com"
+

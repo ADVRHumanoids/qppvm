@@ -130,6 +130,9 @@ private:
     double _period;
     double _cut_off_freq;
     void setFilter(const double period, const double cut_off_freq);
+
+
+    Eigen::Affine3d _waist_ref;
 };
 
 }

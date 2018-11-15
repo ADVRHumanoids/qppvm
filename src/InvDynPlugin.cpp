@@ -23,6 +23,7 @@
 #include <OpenSoT/constraints/GenericConstraint.h>
 #include <OpenSoT/tasks/MinimizeVariable.h>
 #include <OpenSoT/tasks/acceleration/Contact.h>
+#include <OpenSoT/utils/cartesian_utils.h>
 
 
 /* Specify that the class XBotPlugin::ForceAccExample is a XBot RT plugin with name "ForceAccExample" */
@@ -173,8 +174,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _sh_fb_vel.set(Eigen::Vector6d::Zero());
     _imu = _robot->getImu().begin()->second;
     
-    //_fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
-    //_fbest->update(0.0);
+    _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
     
     Eigen::Affine3d fb_T_world, fb_T_anchor;
     _model->getFloatingBasePose(fb_T_world);
@@ -206,6 +206,7 @@ void XBotPlugin::InvDynPlugin::on_start(double time)
     }
 
     _waist_task->resetReference();
+    _waist_task->getReference(_waist_ref);
     
 
     _com_task->reset();
@@ -264,44 +265,48 @@ void XBotPlugin::InvDynPlugin::sync_model(double period)
 {
         _model->syncFrom(*_robot, /*XBot::Sync::MotorSide,*/ XBot::Sync::Position, XBot::Sync::Velocity);
         
-        //HERE WE FILTER and we apply the filtered velocities to the model
-//     setFilter(period, 10.);
-//     _model->getJointVelocity(_qdot);
-//     _qdot_filtered.noalias() = _alpha_filter*_qdot + (1.-_alpha_filter)*_qdot_filtered;
-//     _model->setJointVelocity(_qdot_filtered);
-//     _model->update();
-//     _logger->add("qdot", _qdot);
-//     _logger->add("qdot_filtered", _qdot_filtered);
+        /** QP-based fb estimation with velocity **/
+//        _fbest->update(period);
+//        _fbest->log(_logger);
         
-       // _fbest->update(period);
-       // _fbest->log(_logger);
-        
+        /** FK fb estimation **/
         _fbest_kinematics->update(true);
         Eigen::Matrix4d fbest = _fbest_kinematics->getFloatingBasePose().matrix();
-        _logger->add("_fbest_kinematics", fbest);
-//          Eigen::Affine3d fb_T_world_corrected;
-//          _model->getFloatingBasePose(fb_T_world_corrected);
-//          fb_T_world_corrected.translation() = _fbest_kinematics->getFloatingBasePose().translation();
-//          _model->setFloatingBasePose(fb_T_world_corrected);
-//          _model->update();
-//         
-        
+        _logger->add("fbest_kinematics", fbest);
 
-//         Eigen::Affine3d w_T_fb;
-//         Eigen::Matrix3d w_R_fb;
-//         Eigen::Vector6d fb_twist;
-//         Eigen::Vector3d fb_pos;
-// 
-//         _sh_fb_pos.get(fb_pos);
-//         _sh_fb_vel.get(fb_twist);
-// 
-//         _imu->getOrientation(w_R_fb);
-// 
-//         w_T_fb.linear() = w_R_fb;
-//         w_T_fb.translation() = fb_pos;
-// 
-//         _model->setFloatingBaseState(w_T_fb, fb_twist);
-//         _model->update();
+        /** IMU TASK for WAIST **/
+        static bool first_sync = true;
+        static Eigen::Matrix3d IMU0;
+        static Eigen::Affine3d world0;
+        if(first_sync)
+        {
+            _imu->getOrientation(IMU0);
+            world0 = _fbest_kinematics->getFloatingBasePose();
+            first_sync = false;
+        }
+
+        Eigen::Matrix3d IMU_raw;
+        _imu->getOrientation(IMU_raw);
+        Eigen::Matrix3d IMU;
+        IMU = IMU0.transpose()*IMU_raw;
+
+        Eigen::Affine3d Td, T; Td.setIdentity(); T.setIdentity();
+        T.linear() = world0.linear()*IMU;
+
+        Eigen::Vector3d perror, oerror;
+        cartesian_utils::computeCartesianError(T, Td, perror, oerror);
+        Eigen::Matrix3d skew; skew.setZero();
+        double k = 0.2;
+        oerror *= -k;
+        skew(0,1) = -oerror(2);  skew(0,2) = oerror(1);
+        skew(1,0) =  oerror(2);  skew(1,2) = -oerror(0);
+        skew(2,0) = -oerror(1);  skew(2,1) = oerror(0);
+        Eigen::Affine3d tmp; tmp.setIdentity(); tmp.linear() = skew*_waist_ref.linear();
+        Eigen::Affine3d _waist_des = _waist_ref*tmp;
+        _waist_task->setReference(_waist_des);
+
+        _logger->add("orientation_error_imu", oerror);
+
 }
 
 void XBotPlugin::InvDynPlugin::set_gains()
@@ -437,13 +442,13 @@ void XBotPlugin::InvDynPlugin::sync_cartesian_ifc(double time, double period)
     
     /* Update qppvm references */
     Eigen::Affine3d T_ref;
-    if(_ci->getPoseReference(_waist_task->getDistalLink(), T_ref) )
-    {
-        if(_ci->getBaseLink(_waist_task->getDistalLink()) == _waist_task->getBaseLink() )
-        {
-            _waist_task->setReference(T_ref);
-        }
-    }
+//    if(_ci->getPoseReference(_waist_task->getDistalLink(), T_ref) )
+//    {
+//        if(_ci->getBaseLink(_waist_task->getDistalLink()) == _waist_task->getBaseLink() )
+//        {
+//            _waist_task->setReference(T_ref);
+//        }
+//    }
     
     if(_ci->getPoseReference(_feet_cartesian[0]->getDistalLink(), T_ref) )
     {
