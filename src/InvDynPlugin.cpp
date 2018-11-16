@@ -105,8 +105,8 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     
     
 
-    auto min_wrench_lsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_lsole", _invdyn->getContactsWrenchAffine()[0]);
-    auto min_wrench_rsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_rsole", _invdyn->getContactsWrenchAffine()[1]);
+    _wrench_lsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_lsole", _invdyn->getContactsWrenchAffine()[0]);
+    _wrench_rsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_rsole", _invdyn->getContactsWrenchAffine()[1]);
     
 
 
@@ -136,7 +136,9 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     std::list<uint> pos_idx = {0,1,2};
     std::list<uint> or_idx = {3,4,5};
 
-    _autostack = ( feet_cart_aggr/  (_waist_task%or_idx + _com_task%pos_idx)  /  (_postural_task + 0.1*min_wrench_lsole + 0.1*min_wrench_rsole));
+    _autostack = ( feet_cart_aggr/
+                   (_waist_task%or_idx + _com_task%pos_idx)  /
+                   (_postural_task + _wrench_lsole%or_idx + _wrench_rsole%or_idx ));
     _autostack << _dyn_feas << qddot_lims;
 //     _autostack = boost::make_shared<OpenSoT::AutoStack>(_postural_task);
 //     _autostack = ((feet_cart_aggr) / ( _postural_task ));
@@ -172,9 +174,12 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _sh_fb_vel = handle->getSharedMemory()->getSharedObject<Eigen::Vector6d>("/gazebo/floating_base_velocity");
     _sh_fb_pos.set(Eigen::Vector3d::Zero());
     _sh_fb_vel.set(Eigen::Vector6d::Zero());
+
     _imu = _robot->getImu().begin()->second;
+    _lft_foot = _robot->getForceTorque().at("l_leg_ft");
+    _rft_foot = _robot->getForceTorque().at("r_leg_ft");
     
-    //_fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
+    _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
     
     Eigen::Affine3d fb_T_world, fb_T_anchor;
     _model->getFloatingBasePose(fb_T_world);
@@ -274,40 +279,46 @@ void XBotPlugin::InvDynPlugin::sync_model(double period)
         Eigen::Matrix4d fbest = _fbest_kinematics->getFloatingBasePose().matrix();
         _logger->add("fbest_kinematics", fbest);
 
+
+        _lft_foot->getWrench(LFT);
+        _rft_foot->getWrench(RFT);
+
+
+
         /** IMU TASK for WAIST **/
-        static bool first_sync = true;
-        static Eigen::Matrix3d IMU0;
-        static Eigen::Affine3d world0;
-        if(first_sync)
-        {
-            _imu->getOrientation(IMU0);
-            world0 = _fbest_kinematics->getFloatingBasePose();
-            first_sync = false;
-        }
+//        static bool first_sync = true;
+//        static Eigen::Matrix3d IMU0;
+//        static Eigen::Affine3d world0;
+//        if(first_sync)
+//        {
+//            _imu->getOrientation(IMU0);
+//            world0 = _fbest_kinematics->getFloatingBasePose();
+//            first_sync = false;
+//        }
 
-        Eigen::Matrix3d IMU_raw;
-        _imu->getOrientation(IMU_raw);
-        Eigen::Matrix3d IMU;
-        IMU = IMU0.transpose()*IMU_raw;
+//        Eigen::Matrix3d IMU_raw;
+//        _imu->getOrientation(IMU_raw);
+//        Eigen::Matrix3d IMU;
+//        IMU = IMU0.transpose()*IMU_raw;
 
-        Eigen::Affine3d Td, T; Td.setIdentity(); T.setIdentity();
-        T.linear() = world0.linear()*IMU;
+//        Eigen::Affine3d Td, T; Td.setIdentity(); T.setIdentity();
+//        T.linear() = world0.linear()*IMU;
 
-        Eigen::Vector3d perror, oerror;
-        cartesian_utils::computeCartesianError(T, Td, perror, oerror);
-        double k = 1.0;
-        oerror *= -k;
+//        Eigen::Vector3d perror, oerror;
+//        cartesian_utils::computeCartesianError(T, Td, perror, oerror);
+//        double k = 1.0;
+//        oerror *= -k;
 
-        KDL::Twist v;
-        v[0] = v[1] = v[2] = 0.0;
-        v[3] = oerror[0];
-        v[4] = oerror[1];
-        v[5] = oerror[2];
-        _waist_ref.Integrate(v, 1./period);
+//        KDL::Twist v;
+//        v[0] = v[1] = v[2] = 0.0;
+//        v[3] = oerror[0];
+//        v[4] = oerror[1];
+//        v[5] = oerror[2];
+//        _waist_ref.Integrate(v, 1./period);
 
-        _waist_task->setReference(_waist_ref);
+//        _waist_task->setReference(_waist_ref);
 
-        _logger->add("orientation_error_imu", oerror);
+//        _logger->add("orientation_error_imu", oerror);
 
 }
 
@@ -342,9 +353,19 @@ void XBotPlugin::InvDynPlugin::solve(double period)
         return;
     }
 
+///////////////////////
+    static Eigen::Vector6d dl_wrench, dr_wrench, l_wrench_d, r_wrench_d;
+    l_wrench_d = _x.tail(12).head(6);
+    r_wrench_d = _x.tail(6);
+
+    dl_wrench = 0.1*(l_wrench_d + LFT);
+    dr_wrench = 0.1*(r_wrench_d + RFT);
+///////////////////////
+
     /* Compute torque */
     _invdyn->computedTorque(_x, _tau, _qddot);
-    _tau += _tau_offset;
+    _tau += _tau_offset - _feet_cartesian[0]->getA().transpose().topRows(3)*dl_wrench.head(3) -
+            _feet_cartesian[1]->getA().transpose().topRows(3)*dr_wrench.head(3);
 
     /* Ramp the torque reference continuously */
     static int iter = 0;

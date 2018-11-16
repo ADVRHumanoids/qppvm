@@ -33,6 +33,7 @@
 #include <QPPVM_RT_plugin/InvDynConfig.h>
 #include <cartesian_interface/CartesianPlugin/Utils.h>
 #include <OpenSoT/tasks/force/CoM.h>
+#include <OpenSoT/tasks/MinimizeVariable.h>
 
 namespace XBotPlugin {
     
@@ -97,6 +98,7 @@ private:
     XBot::RobotInterface::Ptr _robot;
     XBot::ModelInterface::Ptr _model;
     XBot::ImuSensor::ConstPtr _imu;
+    XBot::ForceTorqueSensor::ConstPtr _lft_foot, _rft_foot;
 
     double _start_time;
 
@@ -110,6 +112,7 @@ private:
     OpenSoT::tasks::acceleration::Cartesian::Ptr _waist_task;
     OpenSoT::tasks::acceleration::Postural::Ptr _postural_task;
     OpenSoT::tasks::force::CoM::Ptr _com_task;
+    OpenSoT::tasks::MinimizeVariable::Ptr _wrench_lsole, _wrench_rsole;
     Eigen::Vector3d g;
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
@@ -133,6 +136,9 @@ private:
 
 
     KDL::Frame _waist_ref;
+
+
+    Eigen::Vector6d LFT, RFT;
 };
 
 }
