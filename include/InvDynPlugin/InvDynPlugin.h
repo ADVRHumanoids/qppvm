@@ -132,7 +132,7 @@ private:
     void setFilter(const double period, const double cut_off_freq);
 
 
-    Eigen::Affine3d _waist_ref;
+    KDL::Frame _waist_ref;
 };
 
 }

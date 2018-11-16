@@ -174,7 +174,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _sh_fb_vel.set(Eigen::Vector6d::Zero());
     _imu = _robot->getImu().begin()->second;
     
-    _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
+    //_fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
     
     Eigen::Affine3d fb_T_world, fb_T_anchor;
     _model->getFloatingBasePose(fb_T_world);
@@ -295,15 +295,17 @@ void XBotPlugin::InvDynPlugin::sync_model(double period)
 
         Eigen::Vector3d perror, oerror;
         cartesian_utils::computeCartesianError(T, Td, perror, oerror);
-        Eigen::Matrix3d skew; skew.setZero();
-        double k = 0.2;
+        double k = 1.0;
         oerror *= -k;
-        skew(0,1) = -oerror(2);  skew(0,2) = oerror(1);
-        skew(1,0) =  oerror(2);  skew(1,2) = -oerror(0);
-        skew(2,0) = -oerror(1);  skew(2,1) = oerror(0);
-        Eigen::Affine3d tmp; tmp.setIdentity(); tmp.linear() = skew*_waist_ref.linear();
-        Eigen::Affine3d _waist_des = _waist_ref*tmp;
-        _waist_task->setReference(_waist_des);
+
+        KDL::Twist v;
+        v[0] = v[1] = v[2] = 0.0;
+        v[3] = oerror[0];
+        v[4] = oerror[1];
+        v[5] = oerror[2];
+        _waist_ref.Integrate(v, 1./period);
+
+        _waist_task->setReference(_waist_ref);
 
         _logger->add("orientation_error_imu", oerror);
 
