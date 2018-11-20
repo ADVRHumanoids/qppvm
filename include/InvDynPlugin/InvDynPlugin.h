@@ -112,7 +112,7 @@ private:
     OpenSoT::tasks::acceleration::Cartesian::Ptr _waist_task;
     OpenSoT::tasks::acceleration::Postural::Ptr _postural_task;
     OpenSoT::tasks::force::CoM::Ptr _com_task;
-    OpenSoT::tasks::MinimizeVariable::Ptr _wrench_lsole, _wrench_rsole;
+    
     Eigen::Vector3d g;
     OpenSoT::constraints::acceleration::DynamicFeasibility::Ptr _dyn_feas;
     std::vector<OpenSoT::tasks::acceleration::Cartesian::Ptr> _feet_cartesian;
@@ -139,6 +139,13 @@ private:
 
 
     Eigen::Vector6d LFT, RFT;
+    Eigen::VectorXd _tau_m;
+    
+    
+    Eigen::Affine3d fb_est_imu;
+    Eigen::Vector3d tmp1, tmp2;
+    Eigen::Affine3d fb_T_a;
+
 };
 
 }

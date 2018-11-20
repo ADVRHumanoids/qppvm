@@ -105,8 +105,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     
     
 
-    _wrench_lsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_lsole", _invdyn->getContactsWrenchAffine()[0]);
-    _wrench_rsole = boost::make_shared<OpenSoT::tasks::MinimizeVariable>("min_wrench_rsole", _invdyn->getContactsWrenchAffine()[1]);
+
     
 
 
@@ -138,11 +137,11 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
 
     _autostack = ( feet_cart_aggr/
                    (_waist_task%or_idx + _com_task%pos_idx)  /
-                   (_postural_task + _wrench_lsole%or_idx + _wrench_rsole%or_idx ));
+                   (_postural_task ));
     _autostack << _dyn_feas << qddot_lims;
 //     _autostack = boost::make_shared<OpenSoT::AutoStack>(_postural_task);
 //     _autostack = ((feet_cart_aggr) / ( _postural_task ));
-    _autostack <<  qddot_lims;
+//    _autostack <<  qddot_lims;
 
     _solver = boost::make_shared<OpenSoT::solvers::iHQP>(_autostack->getStack(),
                                                          _autostack->getBounds(),
@@ -163,6 +162,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     
     _model->getJointPosition(_q);
     _model->getJointVelocity(_qdot);
+    _robot->getJointEffort(_tau_m);
     _qddot.setZero(_model->getJointNum());
     _tau = _q; _tau.setZero(_tau.size());
     _x.setZero(_invdyn->getSerializer()->getSize());
@@ -179,7 +179,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _lft_foot = _robot->getForceTorque().at("l_leg_ft");
     _rft_foot = _robot->getForceTorque().at("r_leg_ft");
     
-    _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
+//    _fbest = boost::make_shared<OpenSoT::floating_base_estimation::qp_estimation>(_model, _imu, _contact_links);
     
     Eigen::Affine3d fb_T_world, fb_T_anchor;
     _model->getFloatingBasePose(fb_T_world);
@@ -269,13 +269,14 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
 void XBotPlugin::InvDynPlugin::sync_model(double period)
 {
         _model->syncFrom(*_robot, /*XBot::Sync::MotorSide,*/ XBot::Sync::Position, XBot::Sync::Velocity);
+        _robot->getJointEffort(_tau_m);
         
         /** QP-based fb estimation with velocity **/
 //        _fbest->update(period);
 //        _fbest->log(_logger);
         
         /** FK fb estimation **/
-        _fbest_kinematics->update(true);
+        _fbest_kinematics->update(false);
         Eigen::Matrix4d fbest = _fbest_kinematics->getFloatingBasePose().matrix();
         _logger->add("fbest_kinematics", fbest);
 
@@ -285,39 +286,56 @@ void XBotPlugin::InvDynPlugin::sync_model(double period)
 
 
 
-        /** IMU TASK for WAIST **/
-//        static bool first_sync = true;
-//        static Eigen::Matrix3d IMU0;
-//        static Eigen::Affine3d world0;
-//        if(first_sync)
-//        {
-//            _imu->getOrientation(IMU0);
-//            world0 = _fbest_kinematics->getFloatingBasePose();
-//            first_sync = false;
-//        }
+        
+        static bool first_sync = true;
+        static Eigen::Matrix3d IMU0;
+        static Eigen::Affine3d world0;
+       if(first_sync)
+       {
+           _imu->getOrientation(IMU0);
+           world0 = _fbest_kinematics->getFloatingBasePose();
+           first_sync = false;
+       }
 
-//        Eigen::Matrix3d IMU_raw;
-//        _imu->getOrientation(IMU_raw);
-//        Eigen::Matrix3d IMU;
-//        IMU = IMU0.transpose()*IMU_raw;
-
+       Eigen::Matrix3d IMU_raw;
+       _imu->getOrientation(IMU_raw);
+       Eigen::Matrix3d IMU;
+       IMU = IMU0.transpose()*IMU_raw;
+       IMU.noalias() = world0.linear()*IMU;
+       
+       /* fb est imu */
+       fb_T_a = _fbest_kinematics->getFloatingBasePose().inverse()*_fbest_kinematics->getAnchorPose();
+       tmp1.noalias() = _fbest_kinematics->getFloatingBasePose().linear()*fb_T_a.translation();
+       tmp2.noalias() = IMU*fb_T_a.translation();
+       
+       fb_est_imu.linear() = IMU;
+       fb_est_imu.translation() = _fbest_kinematics->getFloatingBasePose().translation() + (tmp1-tmp2);
+       
+       _model->setFloatingBasePose(fb_est_imu);
+       _model->update();
+       
+       
+       
+       /** IMU TASK for WAIST **/
+       
+// 
 //        Eigen::Affine3d Td, T; Td.setIdentity(); T.setIdentity();
-//        T.linear() = world0.linear()*IMU;
-
+//        T.linear() = IMU;
+// 
 //        Eigen::Vector3d perror, oerror;
 //        cartesian_utils::computeCartesianError(T, Td, perror, oerror);
 //        double k = 1.0;
 //        oerror *= -k;
-
+// 
 //        KDL::Twist v;
 //        v[0] = v[1] = v[2] = 0.0;
 //        v[3] = oerror[0];
 //        v[4] = oerror[1];
 //        v[5] = oerror[2];
 //        _waist_ref.Integrate(v, 1./period);
-
+// 
 //        _waist_task->setReference(_waist_ref);
-
+// 
 //        _logger->add("orientation_error_imu", oerror);
 
 }
@@ -353,19 +371,10 @@ void XBotPlugin::InvDynPlugin::solve(double period)
         return;
     }
 
-///////////////////////
-    static Eigen::Vector6d dl_wrench, dr_wrench, l_wrench_d, r_wrench_d;
-    l_wrench_d = _x.tail(12).head(6);
-    r_wrench_d = _x.tail(6);
-
-    dl_wrench = 0.1*(l_wrench_d + LFT);
-    dr_wrench = 0.1*(r_wrench_d + RFT);
-///////////////////////
-
     /* Compute torque */
     _invdyn->computedTorque(_x, _tau, _qddot);
-    _tau += _tau_offset - _feet_cartesian[0]->getA().transpose().topRows(3)*dl_wrench.head(3) -
-            _feet_cartesian[1]->getA().transpose().topRows(3)*dr_wrench.head(3);
+    _tau += _tau_offset;
+    
 
     /* Ramp the torque reference continuously */
     static int iter = 0;
@@ -465,13 +474,13 @@ void XBotPlugin::InvDynPlugin::sync_cartesian_ifc(double time, double period)
     
     /* Update qppvm references */
     Eigen::Affine3d T_ref;
-//    if(_ci->getPoseReference(_waist_task->getDistalLink(), T_ref) )
-//    {
-//        if(_ci->getBaseLink(_waist_task->getDistalLink()) == _waist_task->getBaseLink() )
-//        {
-//            _waist_task->setReference(T_ref);
-//        }
-//    }
+   if(_ci->getPoseReference(_waist_task->getDistalLink(), T_ref) )
+   {
+       if(_ci->getBaseLink(_waist_task->getDistalLink()) == _waist_task->getBaseLink() )
+       {
+           _waist_task->setReference(T_ref);
+       }
+   }
     
     if(_ci->getPoseReference(_feet_cartesian[0]->getDistalLink(), T_ref) )
     {
