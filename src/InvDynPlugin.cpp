@@ -163,6 +163,7 @@ bool XBotPlugin::InvDynPlugin::init_control_plugin(XBot::Handle::Ptr handle)
     _model->getJointPosition(_q);
     _model->getJointVelocity(_qdot);
     _robot->getJointEffort(_tau_m);
+    _tau_i.setZero(_tau_m.size());
     _qddot.setZero(_model->getJointNum());
     _tau = _q; _tau.setZero(_tau.size());
     _x.setZero(_invdyn->getSerializer()->getSize());
@@ -248,15 +249,36 @@ void XBotPlugin::InvDynPlugin::control_loop(double time, double period)
         double d_factor = std::sqrt(k_factor);
 
         _k = _k0 * k_factor;
-        _d = _d0;// * d_factor;
+        _d = _d0 * d_factor;
 
         _robot->setStiffness(_k);
         _robot->setDamping(_d);
+
+
+        if(k_factor < 1e-3)
+        {
+            static double Pi = 0.;
+            _tau_i += Pi*(_tau.tail(_robot->getJointNum()) - _tau_m)*period;
+
+            _logger->add("tau_i", _tau_i);
+            _logger->add("tau_error", (_tau.tail(_robot->getJointNum()) - _tau_m));
+
+            for(unsigned int i = 0; i < _tau_i.size(); ++i)
+            {
+                if(_tau_i[i] >= 5.)
+                    _tau_i[i] = 5.;
+                else if(_tau_i[i] <= -5.)
+                    _tau_i[i] = -5.;
+            }
+
+            _tau.tail(_robot->getJointNum()) += _tau_i;
+            _model->setJointEffort(_tau);
+        }
+
+
         _robot->setReferenceFrom(*_model, XBot::Sync::Effort);
     }
 
-    
-    
     _robot->move();
     
     _logger->add("x", _x);

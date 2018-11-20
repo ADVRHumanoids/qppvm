@@ -3,34 +3,34 @@ RobotName: "cogimon"
 GazeboXBotPlugin:
   control_rate: 0.001
   gains:
-    RShSag:        {p: 4000, d: 10}
-    RShLat:        {p: 3000, d: 10}
-    RShYaw:        {p: 3000, d: 10}
-    RElbj:         {p: 3000, d: 10}
-    RForearmPlate: {p: 1500, d: 10}
-    RWrj1:         {p: 1500, d: 10}
-    RWrj2:         {p: 1500, d: 10}
-    LShSag:        {p: 4000, d: 10}
-    LShLat:        {p: 3000, d: 10}
-    LShYaw:        {p: 3000, d: 10}
-    LElbj:         {p: 3000, d: 10}
-    LForearmPlate: {p: 1500, d: 10}
-    LWrj1:         {p: 1500, d: 10}
-    LWrj2:         {p: 1500, d: 10}
-    WaistYaw:      {p: 8000, d: 30}
-    WaistLat: {p: 1000, d: 1}
-    LHipLat: {p: 1000, d: 1}
-    LHipSag: {p: 1000, d: 1}
-    LHipYaw: {p: 1000, d: 1}
-    LKneePitch: {p: 1000, d: 1}
-    LAnklePitch: {p: 1000, d: 1}
-    LAnkleRoll: {p: 1000, d: 1}
-    RHipLat: {p: 1000, d: 1}
-    RHipSag: {p: 1000, d: 1}
-    RHipYaw: {p: 1000, d: 1}
-    RKneePitch: {p: 1000, d: 1}
-    RAnklePitch: {p: 1000, d: 1}
-    RAnkleRoll: {p: 1000, d: 1}
+    RShSag:        {p: 4000, d: 10, tau_off: 2}
+    RShLat:        {p: 3000, d: 10, tau_off: -2}
+    RShYaw:        {p: 3000, d: 10, tau_off: -2}
+    RElbj:         {p: 3000, d: 10, tau_off: 2}
+    RForearmPlate: {p: 1500, d: 10, tau_off: -2}
+    RWrj1:         {p: 1500, d: 10, tau_off: 2}
+    RWrj2:         {p: 1500, d: 10, tau_off: 2}
+    LShSag:        {p: 4000, d: 10, tau_off: -2}
+    LShLat:        {p: 3000, d: 10, tau_off: -2}
+    LShYaw:        {p: 3000, d: 10, tau_off: -2}
+    LElbj:         {p: 3000, d: 10, tau_off: 2}
+    LForearmPlate: {p: 1500, d: 10, tau_off: -2}
+    LWrj1:         {p: 1500, d: 10, tau_off: -2}
+    LWrj2:         {p: 1500, d: 10, tau_off: 2}
+    WaistYaw:      {p: 8000, d: 30, tau_off: -2}
+    WaistLat: {p: 1000, d: 1, tau_off: -2}
+    LHipLat: {p: 1000, d: 1, tau_off: 2}
+    LHipSag: {p: 1000, d: 1, tau_off: 2}
+    LHipYaw: {p: 1000, d: 1, tau_off: -2}
+    LKneePitch: {p: 1000, d: 1, tau_off: -2}
+    LAnklePitch: {p: 1000, d: 1, tau_off: 2}
+    LAnkleRoll: {p: 1000, d: 1, tau_off: -2}
+    RHipLat: {p: 1000, d: 1, tau_off: 2}
+    RHipSag: {p: 1000, d: 1, tau_off: -2}
+    RHipYaw: {p: 1000, d: 1, tau_off: 2}
+    RKneePitch: {p: 1000, d: 1, tau_off: 2}
+    RAnklePitch: {p: 1000, d: 1, tau_off: -2}
+    RAnkleRoll: {p: 1000, d: 1, tau_off: 2}
 
 
 HALInterface:

@@ -140,7 +140,7 @@ private:
 
     Eigen::Vector6d LFT, RFT;
     Eigen::VectorXd _tau_m;
-    
+    Eigen::VectorXd _tau_i;
     
     Eigen::Affine3d fb_est_imu;
     Eigen::Vector3d tmp1, tmp2;
