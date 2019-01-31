@@ -20,6 +20,8 @@ find_package(PkgConfig)
 pkg_check_modules(CBC REQUIRED cbc)
 pkg_check_modules(OSICBC REQUIRED osi-cbc)
 
+find_package(ifopt REQUIRED)
+
 set(ENABLE_XENO CACHE BOOL "ON")
 if ( ${ENABLE_XENO} )
    find_package(Xenomai)
@@ -55,6 +57,8 @@ add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 #add_executable(ModelValidationTest src/ModelValidationTest.cpp)
 add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
 add_executable(TestGLPK src/GlpkTest.cpp)
+add_executable(ifopt_Test src/ifopt_Test.cpp)
+add_executable(ifopt_contacts_local src/ifopt_contacts_local.cpp)
 
 if ( Xenomai_FOUND )
     set_xeno_flags(GcompFixedBase)
@@ -72,6 +76,8 @@ target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajec
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
 target_link_libraries(TestGLPK ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${CBC_LIBRARIES} ${OSICBC_LIBRARIES})
 # target_link_libraries(ExampleCBC ${XCM_LIBRARIES})
+target_link_libraries(ifopt_Test PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES}) 
+target_link_libraries(ifopt_contacts_local PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES}) 
 
 #############
 ## Install ##

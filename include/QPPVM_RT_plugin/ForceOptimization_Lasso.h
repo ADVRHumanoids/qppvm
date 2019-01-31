@@ -401,13 +401,13 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     OpenSoT::OptvarHelper opt(vars);
        
     /* Wrench bounds */
-    force_ub.setOnes(3); force_ub *= 550;
-    force_lb.setOnes(3); force_lb *=-550; 
+    force_ub.setOnes(3); force_ub *= 500;
+    force_lb.setOnes(3); force_lb *=-500; 
     
     inf_b.setOnes(3); inf_b*=1e30; 
                
-    force_dot_ub.setOnes(3); force_dot_ub *=  1e3; 
-    force_dot_lb.setOnes(3); force_dot_lb *= -1e3; 
+    force_dot_ub.setOnes(3); force_dot_ub *=  500;//1e3; 
+    force_dot_lb.setOnes(3); force_dot_lb *= -500;//-1e3; 
     
     Eigen::VectorXd _aux_var_ub, _aux_var_lb;
     _aux_var_ub.setOnes(7);_aux_var_ub*=1e30;
@@ -544,8 +544,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
    
      int size = t_var.getOutputSize();
      Eigen::VectorXd c_Lasso(size);
-//      c_Lasso.setOnes(size); 
-     c_Lasso << 1.0, 20.0, 30.0, 40.0; /* WEIGHTED LASSO */
+     c_Lasso.setOnes(size); 
+     c_Lasso << 1.0, 1.0, 1.0, 10.0; /* WEIGHTED LASSO */
      task_Lasso = boost::make_shared<OpenSoT::tasks::GenericLPTask>("Lasso task",c_Lasso,t_var);  
        
      
@@ -578,7 +578,8 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
      
    OpenSoT::tasks::Aggregated::Ptr aggr2 = (1e-3*min_slack + _forza_giusta); 
 //    _autostack = boost::make_shared<OpenSoT::AutoStack>( aggr2 );
-   _autostack = (aggr2/task_Lasso); 
+    _autostack = (aggr2/task_Lasso); 
+   
 
    
    for(int i = 0; i < _contact_links.size(); i++)

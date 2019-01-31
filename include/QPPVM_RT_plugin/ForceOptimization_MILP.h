@@ -18,8 +18,6 @@
 #include <OpenSoT/solvers/BackEnd.h>
 #include <OpenSoT/tasks/GenericLPTask.h>
 
-
-
 namespace demo {
     
     class ForzaGiusta : public OpenSoT::Task<Eigen::MatrixXd, Eigen::VectorXd>
@@ -316,6 +314,7 @@ void ForzaGiusta::_log(XBot::MatLogger::Ptr logger)
                      double& period,
                      std::vector<Eigen::VectorXd>& Fc,
                      std::vector<Eigen::VectorXd>& dFc,
+                     std::vector<bool>& integer,
                      Eigen::VectorXd& tau
                     );
         
@@ -418,11 +417,12 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
     
     inf_b.setOnes(3); inf_b*=1e30; 
                
-    force_dot_ub.setOnes(3); force_dot_ub *=  1e3; 
-    force_dot_lb.setOnes(3); force_dot_lb *= -1e3; 
+    force_dot_ub.setOnes(3); force_dot_ub *=  500; 
+    force_dot_lb.setOnes(3); force_dot_lb *= -500; 
     
     Eigen::VectorXd _aux_var_ub(6), _aux_var_lb(6);
     _aux_var_ub.setOnes(6);_aux_var_ub*=1e10; 
+//     _aux_var_ub.setZero(6); 
     _aux_var_lb.setZero(6);
     
 
@@ -462,7 +462,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
        /* MILP IFF condition */ 
         
-       Eigen::VectorXd M(1); M << 500;
+       Eigen::VectorXd M(1); M << 1e3;
        Eigen::VectorXd MILP_ub(1);  MILP_ub.setZero(1);
        Eigen::VectorXd MILP_inf(1); MILP_inf<<1e20;
 
@@ -563,6 +563,7 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
      int size = t_var.getOutputSize();
      Eigen::VectorXd c_MILP(size);
      c_MILP.setOnes(size);
+     c_MILP << 1, 1, 1, 10; /* WEIGHTED MILP */
      task_MILP = boost::make_shared<OpenSoT::tasks::GenericLPTask>("MILP task",c_MILP,t_var);  
          
      for(int i = 0; i < _contact_links.size(); i++)
@@ -572,16 +573,16 @@ demo::ForceOptimization::ForceOptimization(XBot::ModelInterface::Ptr model,
 
  
    /* MILP (2 levels)*/  
-//    OpenSoT::tasks::Aggregated::Ptr aggr2 = (1e-3*min_slack + _forza_giusta); 
-//   _autostack = (aggr2/task_MILP); 
+   OpenSoT::tasks::Aggregated::Ptr aggr2 = (1e-6*min_slack + _forza_giusta); 
+  _autostack = (aggr2/task_MILP); 
 
   
-     _autostack = (_forza_giusta/task_MILP); 
+//      _autostack = (_forza_giusta/task_MILP); 
 
 
    for(int i = 0; i < _contact_links.size(); i++)
    {      
-    _autostack  << aux_var_bounds[i] <<  force_bounds[i] << force_dot_bounds_ub[i]<< force_dot_bounds_lb[i];
+    _autostack  << aux_var_bounds[i] <<  force_bounds[i]  << force_dot_bounds_ub[i]<< force_dot_bounds_lb[i];
    }
    
    _autostack << _friction_constraint;
@@ -627,6 +628,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
                                       double& period,
                                       std::vector<Eigen::VectorXd>& Fc,
                                       std::vector<Eigen::VectorXd>& dFc,
+                                      std::vector<bool>& integer,
                                       Eigen::VectorXd& tau)
 {
     
@@ -636,12 +638,14 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     Fc.resize(_contact_links.size());
      
     dFc.resize(_contact_links.size());
-    
+        
 
     std::vector<Eigen::VectorXd> opt_c;
     opt_c.resize(_contact_links.size());
     
-    std::vector<Eigen::VectorXd> integer;
+    std::vector<Eigen::VectorXd> delta;
+    delta.resize(_contact_links.size());
+    
     integer.resize(_contact_links.size());
     
     start_time_= _start_time;
@@ -673,7 +677,7 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
     for(int i = 0; i < _contact_links.size(); i++)
     {
          _force_dot[i].getValue(_dx_value, opt_c[i]);
-         _t_var[i].getValue(_dx_value,integer[i]);
+         _t_var[i].getValue(_dx_value,delta[i]);
          
          dFc[i]=opt_c[i];
                         
@@ -681,10 +685,11 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
 //         Fc[i] =  dFc[i] ;     
    
         Fc_old[i] = Fc[i];
-       
+        
+        integer[i]=delta[i][0];
         
          std::cout<<"Fc"<< i+1 << ": \n" << Fc[i] <<std::endl;
-         std::cout<<"integer Fc"<< i+1 << ": \n" << integer[i] <<std::endl;
+         std::cout<<"integer Fc"<< i+1 << ": \n" << delta[i] <<std::endl;
          
          Wc[i].setZero(6);
          Wc[i].head(3)=Fc[i];              
@@ -697,7 +702,6 @@ bool demo::ForceOptimization::compute(const Eigen::VectorXd& fixed_base_torque,
          force_bounds[i]->setBounds((1.0/period_)*(force_ub-Fc[i]),(1.0/period_)*(force_lb-Fc[i]));
  
        /* MILP bounds */       
-       Eigen::VectorXd M(1); M << 500;
        Eigen::VectorXd MILP_ub(1);  MILP_ub.setZero(1);
        Eigen::VectorXd MILP_inf(1); MILP_inf<<1e20;
          

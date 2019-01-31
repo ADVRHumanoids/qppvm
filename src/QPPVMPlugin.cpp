@@ -169,11 +169,11 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
         
         links_in_contact.push_back(_robot->leg(i).getTipLinkName());
 
-//         _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
-//         _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+        _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
+        _Dc.setIdentity(6,6); _Dc = 200.*_Dc;
         
-        _Kc.setIdentity(6,6); _Kc = 200.*_Kc;
-        _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
+//         _Kc.setIdentity(6,6); _Kc = 200.*_Kc;
+//         _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
 
         imp_task->setStiffnessDamping(_Kc, _Dc);
         imp_task->useInertiaMatrix(true);
@@ -230,6 +230,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
                                                                  OpenSoT::Indices::range(0,2)
                                                                 );
     
+    
     _Kc.setIdentity(6,6); _Kc = 500.*_Kc;
     _Dc.setIdentity(6,6); _Dc = 50.*_Dc;
     
@@ -237,7 +238,7 @@ bool QPPVMPlugin::init_control_plugin(  XBot::Handle::Ptr handle)
     _ee_task_right->useInertiaMatrix(true);
     
 
-
+    
     auto legs_impedance_aggr = _leg_impedance_task[0] + _leg_impedance_task[1] + _leg_impedance_task[2] + _leg_impedance_task[3];
     auto ee_impedance_aggr = _ee_task_left +  _ee_task_right;
 
@@ -310,6 +311,7 @@ void QPPVMPlugin::on_start(double time)
 
      _ee_task_left->setReference(left_ee_pose.matrix());
      _ee_task_right->setReference(right_ee_pose.matrix());
+     
 
 
      Eigen::Affine3d task_pose;
@@ -340,13 +342,37 @@ void QPPVMPlugin::control_loop(double time, double period)
 
     std::vector<Eigen::VectorXd> Fopt;
     std::vector<Eigen::VectorXd> dFopt;
+    std::vector<bool> integer_opt;
     Eigen::VectorXd tau_opt;
     
-    if(!_force_opt->compute(_tau_d,_start_time,time,period,Fopt,dFopt, tau_opt))
+    
+//     auto tic = std::chrono::steady_clock::now();
+//     
+//     if(!_force_opt->compute(_tau_d,_start_time,time,period,Fopt,dFopt,tau_opt))
+//     {
+//         _force_opt->~ForceOptimization();
+//         close();
+//     }
+//     
+//     auto toc = std::chrono::steady_clock::now();
+//     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(toc-tic).count();
+// 
+//     _matlogger->add("solve_time", duration);
+    
+/* Singularity Avoidance: leg lift */
+    if(!_force_opt->compute(_tau_d,_start_time,time,period,Fopt,dFopt,integer_opt,tau_opt))
     {
         _force_opt->~ForceOptimization();
         close();
     }
+      Eigen::MatrixXd Kc;
+      Kc.setIdentity(6,6); Kc = 500.*Kc;
+      
+     _leg_impedance_task[0]->setStiffness(integer_opt[0]*Kc);
+     _leg_impedance_task[1]->setStiffness(integer_opt[1]*Kc);
+     _leg_impedance_task[2]->setStiffness(integer_opt[2]*Kc);
+     _leg_impedance_task[3]->setStiffness(integer_opt[3]*Kc);
+
 
     _matlogger->add("tau_opt", tau_opt);
     
