@@ -30,11 +30,6 @@ int main()
   auto n3 = std::make_shared<ExVariables>("n3");
   auto n4 = std::make_shared<ExVariables>("n4");
   
-  auto fr_F1 = std::make_shared<FrictionConstraint>("F1");
-  auto fr_F2 = std::make_shared<FrictionConstraint>("F2");
-  auto fr_F3 = std::make_shared<FrictionConstraint>("F3");
-  auto fr_F4 = std::make_shared<FrictionConstraint>("F4");
-  
   
   nlp.AddVariableSet(p1);
   nlp.AddVariableSet(p2);
@@ -100,6 +95,11 @@ int main()
   nlp.AddConstraintSet(SE_p4);
    
   // FRICTION CONES
+  auto fr_F1 = std::make_shared<FrictionConstraint>("F1");
+  auto fr_F2 = std::make_shared<FrictionConstraint>("F2");
+  auto fr_F3 = std::make_shared<FrictionConstraint>("F3");
+  auto fr_F4 = std::make_shared<FrictionConstraint>("F4");
+  
   double mu = .2;
   
   fr_F1->set_mu(mu);
@@ -107,15 +107,26 @@ int main()
   fr_F3->set_mu(mu);
   fr_F4->set_mu(mu);
   
-  fr_F1->setParam_SE(C,R,P);
-  fr_F2->setParam_SE(C,R,P);
-  fr_F3->setParam_SE(C,R,P);
-  fr_F4->setParam_SE(C,R,P);
-  
   nlp.AddConstraintSet(fr_F1);
   nlp.AddConstraintSet(fr_F2);
   nlp.AddConstraintSet(fr_F3);
   nlp.AddConstraintSet(fr_F4); 
+  
+  // NORMAL CONSTRAINT
+  auto n_p1 = std::make_shared<NormalConstraint>("p1");
+  auto n_p2 = std::make_shared<NormalConstraint>("p2");
+  auto n_p3 = std::make_shared<NormalConstraint>("p3");
+  auto n_p4 = std::make_shared<NormalConstraint>("p4");
+  
+  n_p1->SetParam(C,R,P);
+  n_p2->SetParam(C,R,P);
+  n_p3->SetParam(C,R,P);
+  n_p4->SetParam(C,R,P);
+  
+  nlp.AddConstraintSet(n_p1);
+  nlp.AddConstraintSet(n_p2);
+  nlp.AddConstraintSet(n_p3);
+  nlp.AddConstraintSet(n_p4); 
    
   // COST
   auto cost = std::make_shared<ExCost>();
@@ -129,18 +140,9 @@ int main()
   
   double W_p = 10;
   
-//   cost->SetPosRef(p_ref,W_p);
+  cost->SetPosRef(p_ref,W_p);
   
   nlp.AddCostSet(cost);
-
-  
-//   // STATIC COST
-  auto static_cost = std::make_shared<StaticCost>();
-  
-  static_cost->SetExternalWrench(ext_w);
-  static_cost->SetCoM(com);
-  
-//   nlp.AddCostSet(static_cost);
 
   
   nlp.PrintCurrent();
@@ -156,7 +158,7 @@ int main()
 //   ipopt.SetOption("constr_viol_tol",1e-3);
 //   ipopt.SetOption("mu_strategy", "adaptive");
 //   ipopt.SetOption("bound_relax_factor", 1e4);
-//   ipopt.SetOption("derivative_test", "first-order");
+  ipopt.SetOption("derivative_test", "first-order");
 //   ipopt.SetOption("derivative_test_tol", 1e-3);
 
 

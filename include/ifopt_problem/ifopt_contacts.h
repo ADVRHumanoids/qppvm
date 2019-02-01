@@ -22,7 +22,7 @@ public:
     // the initial values where the NLP starts iterating from
     x0_ = 0.0;
     x1_ = 0.0;
-    x2_ = 0.0;;
+    x2_ = 0.0;
     
     lb_.setConstant(-1000.0);
     ub_.setConstant(1000.0);
@@ -80,72 +80,6 @@ private:
   
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// STATIC RELATION: cost term 
-
-class StaticCost: public CostTerm {
-public:
-    
-    StaticCost() : StaticCost("static_cost_term") 
-    {
-        _wrench_ext.setZero();
-        _mg << 0.0, 0.0, -100;
-        _com.setZero();
-    }
-    StaticCost(const std::string& name) : CostTerm(name) {}
-
-    
-    double GetCost() const override
-    {
-        
-        double value = 0;
-        
-        Eigen::Vector6d cost;
-        cost.setZero();
-        
-        for(int i : {1, 2, 3, 4})
-        {
-            Eigen::Vector3d Fi = GetVariables()->GetComponent("F" + std::to_string(i))->GetValues();
-            Eigen::Vector3d pi = GetVariables()->GetComponent("p" + std::to_string(i))->GetValues();
-            cost.head<3>() += Fi;
-            cost.tail<3>() += (pi-_com).cross(Fi);
-        }
-        
-        
-        cost -= _wrench_ext;
-        cost.head<3>() += _mg;
-        
-//         std::cout <<"cost: " << cost.transpose() << std::endl;     
-        
-        value = cost.dot(cost);
-        
-        return value;
-        
-    };
-    
-    void SetExternalWrench(const Eigen::Vector6d& w)
-    {
-        _wrench_ext = w;
-    }
-    
-    void SetCoM(const Eigen::Vector3d& com)
-    {
-        _com = com;
-    }
-
-    void FillJacobianBlock (std::string var_set, Jacobian& jac) const override
-    {
-        jac.setZero();
-    }
-
-private:
-
-    Eigen::Vector6d _wrench_ext;
-    Eigen::Vector3d _mg, _com;
-
-    
-};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -177,8 +111,9 @@ public:
             {
                 Eigen::Vector3d Fi = GetVariables()->GetComponent("F" + std::to_string(i))->GetValues();
                 Eigen::Vector3d pi = GetVariables()->GetComponent("p" + std::to_string(i))->GetValues();
+                Eigen::Vector3d ni = GetVariables()->GetComponent("n" + std::to_string(i))->GetValues();
                 
-                value += _W_p*(pi -_p_ref.segment(3*(i-1),3)).norm()/2.0 + Fi.norm()/2.0;
+                value += 0.5*_W_p*(pi -_p_ref.segment(3*(i-1),3)).squaredNorm() + 0.5*Fi.squaredNorm() + 0.5*ni.squaredNorm();
             } 
             
             return value;
@@ -206,6 +141,16 @@ public:
                 jac.coeffRef(0, 0) = _W_p*(pi.x()-_p_ref(3*i));
                 jac.coeffRef(0, 1) = _W_p*(pi.y()-_p_ref(3*i+1));
                 jac.coeffRef(0, 2) = _W_p*(pi.z()-_p_ref(3*i+2));
+                
+            }
+            
+            if(var_set == ("n" + std::to_string(i+1)))
+            {
+                Eigen::Vector3d ni = GetVariables()->GetComponent("n" + std::to_string(i+1))->GetValues();
+                
+                jac.coeffRef(0, 0) = ni.x();
+                jac.coeffRef(0, 1) = ni.y();
+                jac.coeffRef(0, 2) = ni.z();
                 
             }
         }
@@ -291,6 +236,7 @@ public:
         {
             if(var_set == ("F" + std::to_string(i+1)))
             {
+                
                 jac_block.coeffRef(0, 0) = 1.0;
                 jac_block.coeffRef(1, 1) = 1.0;
                 jac_block.coeffRef(2, 2) = 1.0;
@@ -416,65 +362,24 @@ public:
         fname_(force_name)
     {
         mu_= 1; 
-              
-        _C.setZero();
-        _R.setOnes();
-        _P << 8, 8, 4;
 
- 
     }
     
     
     void set_mu(const double& mu)
     {
-//         mu_ = std::sqrt(2.*mu)/2.;
         mu_ = mu;
 
     }
     
-//     void set_rot(const Eigen::Vector3d& norm_vec)
-//     {
-// 
-//       if (norm_vec == Eigen::Vector3d::UnitX())
-//       {
-//         R = Eigen::AngleAxisd(-0.5*M_PI, Eigen::Vector3d::UnitY());          
-//       }
-//       else if (norm_vec == - Eigen::Vector3d::UnitX())
-//       {
-//         R = Eigen::AngleAxisd(0.5*M_PI, Eigen::Vector3d::UnitY());
-//       }      
-//       else if (norm_vec == Eigen::Vector3d::UnitY())
-//       {
-//         R = Eigen::AngleAxisd(-0.5*M_PI, Eigen::Vector3d::UnitX());
-//       }
-//       else if (norm_vec == - Eigen::Vector3d::UnitY())
-//       {
-//         R = Eigen::AngleAxisd(0.5*M_PI, Eigen::Vector3d::UnitX());
-//       }
-//       else if (norm_vec == - Eigen::Vector3d::UnitZ())
-//       {
-//         R = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());  
-//       }
-//       
-//     }
-     
-    void setParam_SE(const Eigen::Vector3d& C, const Eigen::Vector3d& R, const Eigen::Vector3d& P)
-    {
-        
-        _C = C; // superellipsoid center
-        _R = R; // radial axis
-        _P = P; // r s t parameters (r=s super-ellipsoid)
-              
-    }
+
 
     VectorXd GetValues() const override
     {
             Eigen::VectorXd value;
             
             value.setZero(2);
-        
-//             value.setZero(5);
-            
+                    
             Eigen::Vector3d F = GetVariables()->GetComponent(fname_)->GetValues();  
   
             int k; 
@@ -486,62 +391,7 @@ public:
                 }
             }                               
                        
-            Eigen::Vector3d p = GetVariables()->GetComponent("p" + std::to_string(k))->GetValues();
             Eigen::Vector3d  n_SE = GetVariables()->GetComponent("n" + std::to_string(k))->GetValues();
-
-//             std::cout <<"k: " << k << std::endl;              
-//             std::cout <<"p: " << p.transpose() << std::endl; 
-
-//             F << -0.3690, 0.0000, 25.4988;
-//             p << 0.1000, -0.3000, 0.0147;
-            
-                                       
-//             Eigen::Vector3d n_SE; 
-// 
-//             n_SE.x() = - _P.x() / pow(_R.x(),_P.x()) * pow(p.x()-_C.x(),_P.x()-1);
-//             n_SE.y() = - _P.y() / pow(_R.y(),_P.y()) * pow(p.y()-_C.y(),_P.y()-1);
-//             n_SE.z() = - _P.z() / pow(_R.z(),_P.z()) * pow(p.z()-_C.z(),_P.z()-1);
-            
-      
-//             n_SE.normalize();   
-            
-//             std::cout <<"n_SE" << n_SE.transpose() << std::endl;
-                       
-//             Eigen::Matrix3d R;
-//             R.setIdentity();
-//                      
-//             R.coeffRef(0, 0) =  n_SE.y()/((n_SE.head(2)).norm()); 
-//             R.coeffRef(0, 1) = -n_SE.x()/((n_SE.head(2)).norm());  
-//             
-//             R.coeffRef(1, 0) =  (n_SE.x()*n_SE.z())/((n_SE.head(2)).norm());  
-//             R.coeffRef(1, 1) =  (n_SE.y()*n_SE.z())/((n_SE.head(2)).norm());  
-//             R.coeffRef(1, 2) = -(n_SE.head(2)).norm();  
-//             
-//             R.coeffRef(2, 0) = n_SE.x();  
-//             R.coeffRef(2, 1) = n_SE.y();  
-//             R.coeffRef(2, 2) = n_SE.z();  
-                        
-//             std::cout <<"R" << R << std::endl;
-                        
-//             Eigen::MatrixXd A; A.setZero(5,3);
-//             A.coeffRef(0, 0) =  1.0;
-//             A.coeffRef(0, 2) = -mu_;
-//         
-//             A.coeffRef(1, 0) = -1.0;
-//             A.coeffRef(1, 2) = -mu_;
-//         
-//             A.coeffRef(2, 1) =  1.0;
-//             A.coeffRef(2, 2) = -mu_;
-//         
-//             A.coeffRef(3, 1) = -1.0;
-//             A.coeffRef(3, 2) = -mu_;
-//         
-//             A.coeffRef(4, 2) = -1.0;     
-                    
-//             value = A*R*F;
-            
-//             std::cout <<"F_local " << (R*F).transpose() << std::endl;
-//             std::cout <<"value " << value.transpose() << std::endl;
             
             value(0) = -F.dot(n_SE); 
             value(1) = (F-(n_SE.dot(F))*n_SE).norm() - mu_*(F.dot(n_SE));
@@ -572,71 +422,178 @@ public:
     void FillJacobianBlock (std::string var_set, Jacobian& jac_block) const override
     {
         
+      jac_block.setZero();
+      
+      Eigen::Vector3d F = GetVariables()->GetComponent(fname_)->GetValues();  
+      
+       int k; 
+       for(int i = 0; i < 4; i++)
+       {
+           if(fname_ == ("F" + std::to_string(i+1)))
+           {
+               k = i + 1;
+           }
+       }                               
+                              
+       Eigen::Vector3d  n_SE = GetVariables()->GetComponent("n" + std::to_string(k))->GetValues();
+       
+       
+       double t1 = F.dot(n_SE);
+       
+       double t2 = F.x()-n_SE.x()*t1;
+       double t3 = F.y()-n_SE.y()*t1;
+       double t4 = F.z()-n_SE.z()*t1;
+       
+       double t5 = F.x()*n_SE.x();
+       double t6 = F.y()*n_SE.y();
+       double t7 = F.z()*n_SE.z();
+       
        if(var_set == fname_)
        {     
-            
-           Eigen::Vector3d F = GetVariables()->GetComponent(fname_)->GetValues();  
+           
+            jac_block.coeffRef(0, 0) = -n_SE.x();
+            jac_block.coeffRef(0, 1) = -n_SE.y();
+            jac_block.coeffRef(0, 2) = -n_SE.z();
+
+            jac_block.coeffRef(1, 0) = (t2*(n_SE.x()*n_SE.x()-1.0)*2.0+n_SE.x()*n_SE.y()*t3*2.0+n_SE.x()*n_SE.z()*t4*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*n_SE.x();
+            jac_block.coeffRef(1, 1) = (t3*(n_SE.y()*n_SE.y()-1.0)*2.0+n_SE.x()*n_SE.y()*t2*2.0+n_SE.y()*n_SE.z()*t4*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*n_SE.y();
+            jac_block.coeffRef(1, 2) = (t4*(n_SE.z()*n_SE.z()-1.0)*2.0+n_SE.x()*n_SE.z()*t2*2.0+n_SE.y()*n_SE.z()*t3*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*n_SE.z();
+
+       }
+       
   
-            int k; 
-            for(int i = 0; i < 4; i++)
-            {
-                if(fname_ == ("F" + std::to_string(i+1)))
-                {
-                    k = i + 1;
-                }
-            }                               
-                                   
-            Eigen::Vector3d  n_SE = GetVariables()->GetComponent("n" + std::to_string(k))->GetValues();
+       if(var_set == ("n" + std::to_string(k)))
+       {     
+            jac_block.coeffRef(0, 0) = -F.x();
+            jac_block.coeffRef(0, 1) = -F.y();
+            jac_block.coeffRef(0, 2) = -F.z();
             
-            Eigen::VectorXd fr;
-            
-            fr.setZero(3);
-        
-            jac_block.setZero();
-        
-            jac_block.coeffRef(0, 3) = -n_SE.x();
-            jac_block.coeffRef(0, 4) = -n_SE.y();
-            jac_block.coeffRef(0, 5) = -n_SE.z();
-            jac_block.coeffRef(0, 6) = -F.x();
-            jac_block.coeffRef(0, 7) = -F.y();
-            jac_block.coeffRef(0, 8) = -F.z();
-            
-            jac_block.coeffRef(1, 3) = - mu_*n_SE.x();
-            jac_block.coeffRef(1, 4) = - mu_*n_SE.y();
-            jac_block.coeffRef(1, 5) = - mu_*n_SE.z();
-            jac_block.coeffRef(1, 6) = - mu_*F.x();
-            jac_block.coeffRef(1, 7) = - mu_*F.y();
-            jac_block.coeffRef(1, 8) = - mu_*F.z();
+            jac_block.coeffRef(1, 0) = (t2*(t6+t7+t5*2.0)*2.0+F.x()*n_SE.y()*t3*2.0+F.x()*n_SE.z()*t4*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*F.x();
+            jac_block.coeffRef(1, 1) = (t3*(t5+t7+t6*2.0)*2.0+F.y()*n_SE.x()*t2*2.0+F.y()*n_SE.z()*t4*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*F.y();
+            jac_block.coeffRef(1, 2) = (t4*(t5+t6+t7*2.0)*2.0+F.z()*n_SE.x()*t2*2.0+F.z()*n_SE.y()*t3*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*F.z();
             
        }
         
-//         jac_block.coeffRef(0, 0) =  1.0;
-//         jac_block.coeffRef(0, 2) = -mu_;
-//         
-//         jac_block.coeffRef(1, 0) = -1.0;
-//         jac_block.coeffRef(1, 2) = -mu_;
-//         
-//         jac_block.coeffRef(2, 1) =  1.0;
-//         jac_block.coeffRef(2, 2) = -mu_;
-//         
-//         jac_block.coeffRef(3, 1) = -1.0;
-//         jac_block.coeffRef(3, 2) = -mu_;
-//         
-//         jac_block.coeffRef(4, 2) = -1.0;
-//                             
-//         Eigen::MatrixXd J = (jac_block * R);
-//         jac_block = J.sparseView();
-
-      
     }
     
 private:
     
   double mu_;
   std::string fname_;
-  Eigen::Vector3d _C, _R, _P;
-  bool SE_flag;
     
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+class NormalConstraint : public ConstraintSet {
+    
+public:
+
+     NormalConstraint(const std::string& position_name) :
+        ConstraintSet(3, "NormalConstraint " + position_name),
+        pname_(position_name)
+    {
+        _C.setZero();
+        _R.setOnes();
+        _P << 8, 8, 4;
+    }
+
+    // The constraint value minus the constant value "1", moved to bounds.
+    VectorXd GetValues() const override
+    {
+       
+        Eigen::VectorXd value;
+        value.setZero(3);
+        
+        Eigen::Vector3d p = GetVariables()->GetComponent(pname_)->GetValues(); 
+        
+        int k; 
+        for(int i = 0; i < 4; i++)
+        {
+            if(pname_ == ("p" + std::to_string(i+1)))
+            {
+                k = i + 1;
+            }
+        }
+        
+        Eigen::Vector3d  n_SE = GetVariables()->GetComponent("n" + std::to_string(k))->GetValues();
+             
+        value(0)= n_SE.x() + _P.x()/pow(_R.x(),_P.x()) * pow(p.x()-_C.x(),_P.x()-1);
+        value(1)= n_SE.y() + _P.y()/pow(_R.y(),_P.y()) * pow(p.y()-_C.y(),_P.y()-1);
+        value(2)= n_SE.z() + _P.z()/pow(_R.z(),_P.z()) * pow(p.z()-_C.z(),_P.z()-1);
+                
+//         std::cout <<"value " << value.transpose() << std::endl; 
+        
+        return value;
+        
+    };
+    
+    void SetParam(const Eigen::Vector3d& C, const Eigen::Vector3d& R, const Eigen::Vector3d& P)
+    {
+        _C = C; // superellipsoid center
+        _R = R; // radial axis
+        _P = P; // r s t parameters (r=s super-ellipsoid)
+    }
+
+    // The only constraint in this set is an equality constraint to 1.
+    // Constant values should always be put into GetBounds(), not GetValues().
+    // For inequality constraints (<,>), use Bounds(x, inf) or Bounds(-inf, x).
+    VecBound GetBounds() const override
+    {
+        VecBound b(GetRows());
+         
+        for(int i = 0; i < 3; i++)
+        {            
+             b.at(i) = Bounds(.0, .0);               
+        }
+                            
+        return b; 
+        
+    }
+
+    // This function provides the first derivative of the constraints.
+    // In case this is too difficult to write, you can also tell the solvers to
+    // approximate the derivatives by finite differences and not overwrite this
+    // function, e.g. in ipopt.cc::use_jacobian_approximation_ = true
+    void FillJacobianBlock (std::string var_set, Jacobian& jac_block) const override
+    {
+        jac_block.setZero();
+        
+        Eigen::Vector3d p = GetVariables()->GetComponent(pname_)->GetValues();  
+      
+        int k; 
+        for(int i = 0; i < 4; i++)
+        {
+            if(pname_ == ("p" + std::to_string(i+1)))
+            {
+                k = i + 1;
+            }
+        }                               
+                              
+
+        if(var_set == ("n" + std::to_string(k)))
+        {
+             jac_block.coeffRef(0, 0) = 1.0;
+             jac_block.coeffRef(1, 1) = 1.0;
+             jac_block.coeffRef(2, 2) = 1.0; 
+        }
+        
+        if(var_set == pname_)
+        {
+            
+            jac_block.coeffRef(0, 0) = _P.x()*(_P.x()-1)/pow(_R.x(),_P.x()) * pow(p.x()-_C.x(),_P.x()-2);
+            jac_block.coeffRef(1, 1) = _P.y()*(_P.y()-1)/pow(_R.y(),_P.y()) * pow(p.y()-_C.y(),_P.y()-2);
+            jac_block.coeffRef(2, 2) = _P.z()*(_P.z()-1)/pow(_R.z(),_P.z()) * pow(p.z()-_C.z(),_P.z()-2);
+                               
+        }
+    }
+    
+private:
+    
+    Eigen::Vector3d _C, _R, _P;
+    std::string pname_;
 };
 
 
