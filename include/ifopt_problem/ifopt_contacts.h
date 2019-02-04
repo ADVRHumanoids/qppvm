@@ -20,9 +20,9 @@ public:
   ExVariables(const std::string& name) : VariableSet(3, name)
   {
     // the initial values where the NLP starts iterating from
-    x0_ = 0.0;
-    x1_ = 0.0;
-    x2_ = 0.0;
+//     x0_ = 0.0;
+//     x1_ = 0.0;
+//     x2_ = 0.0;
     
     lb_.setConstant(-1000.0);
     ub_.setConstant(1000.0);
@@ -358,7 +358,7 @@ class FrictionConstraint : public ConstraintSet {
 public:
 
     FrictionConstraint(const std::string& force_name) :
-        ConstraintSet(2, "FrictionConstraint " + force_name),
+        ConstraintSet(3, "FrictionConstraint " + force_name),
         fname_(force_name)
     {
         mu_= 1; 
@@ -378,7 +378,7 @@ public:
     {
             Eigen::VectorXd value;
             
-            value.setZero(2);
+            value.setZero(3);
                     
             Eigen::Vector3d F = GetVariables()->GetComponent(fname_)->GetValues();  
   
@@ -395,6 +395,8 @@ public:
             
             value(0) = -F.dot(n_SE); 
             value(1) = (F-(n_SE.dot(F))*n_SE).norm() - mu_*(F.dot(n_SE));
+            value(2) = n_SE.squaredNorm() - 1.0;
+            
                   
 //             std::cout <<"value " << value.transpose() << std::endl;        
   
@@ -407,10 +409,13 @@ public:
     VecBound GetBounds() const override
     {
         VecBound b(GetRows());
+        
         for(int i = 0; i < 2; i++)
         {            
              b.at(i) = BoundSmallerZero;               
-        }
+        }        
+
+        b.at(2) = Bounds(.0, .0);  
                             
         return b;
     }
@@ -471,6 +476,10 @@ public:
             jac_block.coeffRef(1, 0) = (t2*(t6+t7+t5*2.0)*2.0+F.x()*n_SE.y()*t3*2.0+F.x()*n_SE.z()*t4*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*F.x();
             jac_block.coeffRef(1, 1) = (t3*(t5+t7+t6*2.0)*2.0+F.y()*n_SE.x()*t2*2.0+F.y()*n_SE.z()*t4*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*F.y();
             jac_block.coeffRef(1, 2) = (t4*(t5+t6+t7*2.0)*2.0+F.z()*n_SE.x()*t2*2.0+F.z()*n_SE.y()*t3*2.0)*1.0/sqrt(t2*t2+t3*t3+t4*t4)*(-1.0/2.0) - mu_*F.z();
+            
+            jac_block.coeffRef(2, 0) = 2*n_SE.x();
+            jac_block.coeffRef(2, 1) = 2*n_SE.y();
+            jac_block.coeffRef(2, 2) = 2*n_SE.z();
             
        }
         
@@ -571,13 +580,15 @@ public:
                 k = i + 1;
             }
         }                               
-                              
+         
 
         if(var_set == ("n" + std::to_string(k)))
         {
+            
              jac_block.coeffRef(0, 0) = 1.0;
              jac_block.coeffRef(1, 1) = 1.0;
              jac_block.coeffRef(2, 2) = 1.0; 
+             
         }
         
         if(var_set == pname_)

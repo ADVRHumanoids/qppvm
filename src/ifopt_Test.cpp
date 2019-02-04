@@ -150,10 +150,9 @@ int main()
 
   // 2. choose solver and options
   IpoptSolver ipopt;
-//   ipopt.SetOption("linear_solver", "ma27");
+//   ipopt.SetOption("linear_solver", "mumps");
 //   ipopt.SetOption("jacobian_approximation", "exact");
-//   ipopt.SetOption("jacobian_approximation", "finite-difference-values");
-//   ipopt.SetOption("max_iter", 6000);
+//   ipopt.SetOption("max_iter", 8000);
 //   ipopt.SetOption("tol", 1e-3);
 //   ipopt.SetOption("constr_viol_tol",1e-3);
 //   ipopt.SetOption("mu_strategy", "adaptive");
@@ -165,7 +164,10 @@ int main()
   // 3 . solve
   ipopt.Solve(nlp);
   Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
-//   std::cout << x.transpose() << std::endl;
+  
+  for(int i = 0; i < 4; i++)
+  std::cout<<"n"<< i+1 << ": \n" << x.segment(i*3 + 24, 3).norm() <<std::endl;
+  
   for(int i = 0; i < 4; i++)
   std::cout<<"p"<< i+1 << ": \n" << x.segment(i*3, 3).transpose() <<std::endl;
 
