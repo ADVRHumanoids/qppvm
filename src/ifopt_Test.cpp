@@ -152,7 +152,7 @@ int main()
   IpoptSolver ipopt;
 //   ipopt.SetOption("linear_solver", "mumps");
 //   ipopt.SetOption("jacobian_approximation", "exact");
-//   ipopt.SetOption("max_iter", 8000);
+//   ipopt.SetOption("max_iter", 6000);
 //   ipopt.SetOption("tol", 1e-3);
 //   ipopt.SetOption("constr_viol_tol",1e-3);
 //   ipopt.SetOption("mu_strategy", "adaptive");
