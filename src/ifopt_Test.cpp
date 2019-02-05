@@ -21,10 +21,12 @@ int main()
   auto p2 = std::make_shared<ExVariables>("p2");
   auto p3 = std::make_shared<ExVariables>("p3");
   auto p4 = std::make_shared<ExVariables>("p4");
+  
   auto F1 = std::make_shared<ExVariables>("F1");
   auto F2 = std::make_shared<ExVariables>("F2");
   auto F3 = std::make_shared<ExVariables>("F3");
   auto F4 = std::make_shared<ExVariables>("F4"); 
+  
   auto n1 = std::make_shared<ExVariables>("n1");
   auto n2 = std::make_shared<ExVariables>("n2");
   auto n3 = std::make_shared<ExVariables>("n3");
@@ -35,10 +37,12 @@ int main()
   nlp.AddVariableSet(p2);
   nlp.AddVariableSet(p3);
   nlp.AddVariableSet(p4);
+  
   nlp.AddVariableSet(F1);
   nlp.AddVariableSet(F2);
   nlp.AddVariableSet(F3);
   nlp.AddVariableSet(F4);
+  
   nlp.AddVariableSet(n1);
   nlp.AddVariableSet(n2);
   nlp.AddVariableSet(n3);
@@ -64,7 +68,7 @@ int main()
   // CENTROIDAL DYNAMICS
   auto static_constr = std::make_shared<StaticConstraint>();
   Eigen::Vector6d ext_w;
-  ext_w << 80.0, 0, 0, 0, 0, 0.0;
+  ext_w << 100.0, 0, 0, 0, 0, 0.0;
   static_constr->SetExternalWrench(ext_w);
   
   Eigen::Vector3d com;
