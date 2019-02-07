@@ -20,6 +20,26 @@ find_package(PkgConfig)
 
 find_package(ifopt REQUIRED)
 
+find_package(XBotInterface REQUIRED)
+find_package(XCM QUIET)
+find_package(OpenSoT REQUIRED)
+find_package(ReflexxesTypeII REQUIRED)
+find_package(catkin REQUIRED COMPONENTS roscpp
+                                        std_msgs
+                                        geometry_msgs
+                                        sensor_msgs)
+
+find_package(cartesian_interface REQUIRED)
+
+include_directories(include
+                    ${OpenSoT_INCLUDE_DIRS}
+                    ${XBotInterface_INCLUDE_DIRS}
+                    ${EIGEN3_INCLUDE_DIRS}
+                    ${catkin_INCLUDE_DIRS}
+                    ${ReflexxesTypeII_INCLUDE_DIRS}
+	            ${cartesian_interface_INCLUDE_DIRS}
+                    )
+
 set(ENABLE_XENO CACHE BOOL "ON")
 if ( ${ENABLE_XENO} )
    find_package(Xenomai)
@@ -56,6 +76,7 @@ if ( Xenomai_FOUND )
     set_xeno_flags(GcompFixedBase)
 endif()
 
+
 ##########
 ## Link ##
 ##########
@@ -71,4 +92,18 @@ target_link_libraries(ifopt_contacts PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES})
 ycm_library_install(QPPVMPlugin 1 0 0)
 ycm_library_install(GcompFixedBase 1 0 0)
 
+
+# ifopt_contact_node
+add_executable(ifopt_contacts_node src/ifopt_contacts_node.cpp)
+target_link_libraries(ifopt_contacts_node ${OpenSoT_LIBRARIES}
+					  ${XBotInterface_LIBRARIES}
+					  ${catkin_LIBRARIES}
+					  ${ReflexxesTypeII_LIBRARIES}
+					  ${cartesian_interface_LIBRARIES})
+					  					  					  
+
 include(AddUninstallTarget)
+
+
+
+

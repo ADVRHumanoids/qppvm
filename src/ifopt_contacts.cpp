@@ -72,7 +72,7 @@ int main()
   // CENTROIDAL DYNAMICS
   auto static_constr = std::make_shared<StaticConstraint>();
   Eigen::Vector6d ext_w;
-  ext_w << 90.0, 20, 0, 0, 0, 0.0;
+  ext_w << 90, 0, 0, 0, 0, 0.0;
   static_constr->SetExternalWrench(ext_w);
   
   nlp.AddConstraintSet(static_constr);
@@ -172,10 +172,6 @@ int main()
   std::cout<<"F"<< i+1 << ": \n" << x.segment(i*3 + 12, 3).transpose() <<std::endl;
   
 
-  // 4. test if solution correct
-  double eps = 1e-5; //double precision
-  assert(1.0-eps < x(0) && x(0) < 1.0+eps);
-  assert(0.0-eps < x(1) && x(1) < 0.0+eps);
   
    for(int k = 0; k < x.size(); k++)
    {
