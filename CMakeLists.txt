@@ -1,3 +1,5 @@
+project(ifopt_contacts_node)
+
 # CMake minimum version and policies
 cmake_minimum_required(VERSION 2.8.12)
 if(COMMAND cmake_policy)
@@ -6,8 +8,6 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0017 NEW)
 endif(COMMAND cmake_policy)
 
-# XBotCore
-project(QPPVM_RT_plugin)
 
 # Add cmake dir and include custom macros
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -28,6 +28,12 @@ find_package(catkin REQUIRED COMPONENTS roscpp
                                         std_msgs
                                         geometry_msgs
                                         sensor_msgs)
+                                        
+                                        
+catkin_package(
+   INCLUDE_DIRS include 
+
+)
 
 find_package(cartesian_interface REQUIRED)
 
@@ -71,6 +77,7 @@ include_directories(include
 add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
 add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
 add_executable(ifopt_contacts src/ifopt_contacts.cpp)
+add_executable(ifopt_contacts_node src/ifopt_contacts_node.cpp)
 
 if ( Xenomai_FOUND )
     set_xeno_flags(GcompFixedBase)
@@ -84,6 +91,12 @@ endif()
 target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
 target_link_libraries(ifopt_contacts PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES}) 
+target_link_libraries(ifopt_contacts_node ${OpenSoT_LIBRARIES}
+					  ${XBotInterface_LIBRARIES}
+					  ${catkin_LIBRARIES}
+					  ${ReflexxesTypeII_LIBRARIES}
+					  ${cartesian_interface_LIBRARIES}
+					  ifopt::ifopt_ipopt)
 
 #############
 ## Install ##
@@ -91,19 +104,27 @@ target_link_libraries(ifopt_contacts PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES})
 
 ycm_library_install(QPPVMPlugin 1 0 0)
 ycm_library_install(GcompFixedBase 1 0 0)
+ycm_library_install(ifopt_contacts 1 0 0)
 
+install(TARGETS ifopt_contacts_node ifopt_contacts_node
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
-# ifopt_contact_node
-add_executable(ifopt_contacts_node src/ifopt_contacts_node.cpp)
-target_link_libraries(ifopt_contacts_node ${OpenSoT_LIBRARIES}
-					  ${XBotInterface_LIBRARIES}
-					  ${catkin_LIBRARIES}
-					  ${ReflexxesTypeII_LIBRARIES}
-					  ${cartesian_interface_LIBRARIES})
-					  					  					  
+# Mark cpp header files for installation
+install(DIRECTORY include/ifopt_problem/
+    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+    FILES_MATCHING PATTERN "*.h"
+    PATTERN ".svn" EXCLUDE
+)
 
-include(AddUninstallTarget)
-
-
+## Mark other files for installation (e.g. launch and bag files, etc.)
+install(DIRECTORY launch/
+#   # myfile2
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+  FILES_MATCHING PATTERN "*.launch"
+)
+				  					  					  
 
 

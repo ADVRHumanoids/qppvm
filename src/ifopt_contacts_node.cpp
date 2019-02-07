@@ -3,14 +3,17 @@
 
 
 ModelInterface::Ptr model;
+boost::shared_ptr<IFOPT_problem> contacts_opt;
 boost::shared_ptr<cartesian_interface_handler> _ci;
 Eigen::VectorXd q;
 
+using namespace ifopt;
 
 int main(int argc, char **argv)
 {
+  
     /* Init ROS node */
-    ros::init(argc, argv, "ipopt_contcats_node");
+    ros::init(argc, argv, "ifopt_contacts_node");
     ros::NodeHandle nh;
 
     double rate;
@@ -30,17 +33,22 @@ int main(int argc, char **argv)
         setZeros(q, *model, map);
     }
 
+
     bool log;
     nh.param("log", log, false);
 
     XBot::MatLogger::Ptr logger;
     uint T = ros::Time::now().sec;
     std::stringstream ss;
-    ss<<"/tmp/ipopt_contacts_node_"<<T;
-
+    
+    ss<<"/tmp/ifopt_contacts_node_"<<T;
+    
     if(log)
         logger = XBot::MatLogger::getLogger(ss.str());
 
+
+    contacts_opt = boost::make_shared<IFOPT_problem>(*model);
+    
     _ci = boost::make_shared<cartesian_interface_handler>(model);
 
     double time = 0;

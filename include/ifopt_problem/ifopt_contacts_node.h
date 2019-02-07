@@ -12,6 +12,7 @@
 
 using namespace XBot;
 using namespace XBot::Cartesian;
+using namespace ifopt;
 
 static void setZeros(Eigen::VectorXd& q, ModelInterface& model, const std::map<std::string, double>& zeros)
 {
@@ -109,50 +110,50 @@ public:
       
         if(!create_problem())
             throw std::runtime_error("Problems during creation of IPOPT problem!");
+	
     }
 
     bool create_problem()
     {
         
 	Eigen::VectorXd q;
-        _model.getJointPosition(q);
+        _model.getJointPosition(q);		
 	
-	
-	auto p1 = std::make_shared<ifopt::ExVariables>("p1");
-	auto p2 = std::make_shared<ifopt::ExVariables>("p2");
-	auto p3 = std::make_shared<ifopt::ExVariables>("p3");
-	auto p4 = std::make_shared<ifopt::ExVariables>("p4");
+	auto p1 = std::make_shared<ExVariables>("p1");
+	auto p2 = std::make_shared<ExVariables>("p2");
+	auto p3 = std::make_shared<ExVariables>("p3");
+	auto p4 = std::make_shared<ExVariables>("p4");
       
-	auto F1 = std::make_shared<ifopt::ExVariables>("F1");
-	auto F2 = std::make_shared<ifopt::ExVariables>("F2");
-	auto F3 = std::make_shared<ifopt::ExVariables>("F3");
-	auto F4 = std::make_shared<ifopt::ExVariables>("F4"); 
+	auto F1 = std::make_shared<ExVariables>("F1");
+	auto F2 = std::make_shared<ExVariables>("F2");
+	auto F3 = std::make_shared<ExVariables>("F3");
+	auto F4 = std::make_shared<ExVariables>("F4"); 
       
-	auto n1 = std::make_shared<ifopt::ExVariables>("n1");
-	auto n2 = std::make_shared<ifopt::ExVariables>("n2");
-	auto n3 = std::make_shared<ifopt::ExVariables>("n3");
-	auto n4 = std::make_shared<ifopt::ExVariables>("n4");
+	auto n1 = std::make_shared<ExVariables>("n1");
+	auto n2 = std::make_shared<ExVariables>("n2");
+	auto n3 = std::make_shared<ExVariables>("n3");
+	auto n4 = std::make_shared<ExVariables>("n4");
       
-	auto com = std::make_shared<ifopt::ExVariables>("com");
+	auto com = std::make_shared<ExVariables>("com");
 	
-	auto static_constr = std::make_shared<ifopt::StaticConstraint>();
+	auto static_constr = std::make_shared<StaticConstraint>();
 	
-	auto SE_p1 = std::make_shared<ifopt::SuperEllipsoidConstraint>("p1");
-	auto SE_p2 = std::make_shared<ifopt::SuperEllipsoidConstraint>("p2");
-	auto SE_p3 = std::make_shared<ifopt::SuperEllipsoidConstraint>("p3");
-	auto SE_p4 = std::make_shared<ifopt::SuperEllipsoidConstraint>("p4");
+	auto SE_p1 = std::make_shared<SuperEllipsoidConstraint>("p1");
+	auto SE_p2 = std::make_shared<SuperEllipsoidConstraint>("p2");
+	auto SE_p3 = std::make_shared<SuperEllipsoidConstraint>("p3");
+	auto SE_p4 = std::make_shared<SuperEllipsoidConstraint>("p4");
 	
-	auto fr_F1 = std::make_shared<ifopt::FrictionConstraint>("F1");
-	auto fr_F2 = std::make_shared<ifopt::FrictionConstraint>("F2");
-	auto fr_F3 = std::make_shared<ifopt::FrictionConstraint>("F3");
-	auto fr_F4 = std::make_shared<ifopt::FrictionConstraint>("F4");
+	auto fr_F1 = std::make_shared<FrictionConstraint>("F1");
+	auto fr_F2 = std::make_shared<FrictionConstraint>("F2");
+	auto fr_F3 = std::make_shared<FrictionConstraint>("F3");
+	auto fr_F4 = std::make_shared<FrictionConstraint>("F4");
 	
-	auto n_p1 = std::make_shared<ifopt::NormalConstraint>("p1");
-	auto n_p2 = std::make_shared<ifopt::NormalConstraint>("p2");
-	auto n_p3 = std::make_shared<ifopt::NormalConstraint>("p3");
-	auto n_p4 = std::make_shared<ifopt::NormalConstraint>("p4");
+	auto n_p1 = std::make_shared<NormalConstraint>("p1");
+	auto n_p2 = std::make_shared<NormalConstraint>("p2");
+	auto n_p3 = std::make_shared<NormalConstraint>("p3");
+	auto n_p4 = std::make_shared<NormalConstraint>("p4");
       
-	auto cost = std::make_shared<ifopt::ExCost>();
+	auto cost = std::make_shared<ExCost>();
 	
 	
 	_nlp.AddVariableSet(p1); p1->SetBounds(Eigen::Vector3d( 0.1, -1.0, 0.0),Eigen::Vector3d( 2.0, -0.1, 0.4));
@@ -191,45 +192,29 @@ public:
 	
 	cost->SetPosRef(_p_ref,_Wp); _nlp.AddCostSet(cost);
 	
+// 	solve(_x);
+	
+// 	_nlp.PrintCurrent();
+		
         return true;
     }
     
-
-private:
-
-    ModelInterface& _model;  
-    
-    ifopt::Problem _nlp;
-  
-    Eigen::Vector3d _F_max; 
-    Eigen::Vector6d _ext_w;
-    Eigen::Vector3d _C, _R, _P; 
-    Eigen::VectorXd _p_ref; 
-    double _mu, _Wp;
-
-};
-
-class solver
-{
-public:
-    solver(ifopt::Problem& nlp):
-        _nlp(nlp)
-    {
-        createSolver();
-    }
-
-    void createSolver()
-    {
-      _ipopt.SetOption("derivative_test", "first-order");
-    }
-
-    bool solve(Eigen::VectorXd& _x)
-    {
-        _ipopt.Solve(_nlp);
+    bool solve(Eigen::VectorXd& x)
+    {       
+	_ipopt.SetOption("derivative_test", "first-order");     
+	_ipopt.Solve(_nlp);	
 	
-	 _x = _nlp.GetOptVariables()->GetValues();
+	x = _nlp.GetOptVariables()->GetValues();
+
+//         std::cout<<"com: \n"<< x.tail(3).transpose() <<std::endl; 
+// 	
+// 	for(int i = 0; i < 4; i++)
+// 	std::cout<<"p"<< i+1 << ": \n" << x.segment(i*3, 3).transpose() <<std::endl;
+// 	
+// 	for(int i = 0; i < 4; i++)
+// 	std::cout<<"F"<< i+1 << ": \n" << x.segment(i*3 + 12, 3).transpose() <<std::endl;
 	
-        return true;
+	return true;
     }
 
     void log(XBot::MatLogger::Ptr logger)
@@ -239,13 +224,24 @@ public:
 	logger->add("x_sol", _x[k]);
       }
     }
-
+   
 private:
+
+    ModelInterface& _model;  
+    
+    Problem _nlp;
+    IpoptSolver _ipopt;
   
-    ifopt::IpoptSolver _ipopt;
-    ifopt::Problem& _nlp;
     Eigen::VectorXd _x;
+    Eigen::Vector3d _F_max; 
+    Eigen::Vector6d _ext_w;
+    Eigen::Vector3d _C, _R, _P; 
+    Eigen::VectorXd _p_ref; 
+    double _mu, _Wp;
+    
+
 };
+
 
 
 #endif
