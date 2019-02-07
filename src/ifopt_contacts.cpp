@@ -2,7 +2,6 @@
 
 #include <ifopt/problem.h>
 #include <ifopt/ipopt_solver.h>
-// #include <ifopt_problem/ifopt_test.h>
 #include <ifopt_problem/ifopt_contacts.h>
 
 #include <XBotInterface/MatLogger.hpp>
@@ -32,6 +31,7 @@ int main()
   auto n3 = std::make_shared<ExVariables>("n3");
   auto n4 = std::make_shared<ExVariables>("n4");
   
+  auto com = std::make_shared<ExVariables>("com");
   
   nlp.AddVariableSet(p1);
   nlp.AddVariableSet(p2);
@@ -48,12 +48,16 @@ int main()
   nlp.AddVariableSet(n3);
   nlp.AddVariableSet(n4); 
   
+  nlp.AddVariableSet(com); 
+  
   
    // BOUNDS 
   p1->SetBounds(Eigen::Vector3d( 0.1, -1.0, 0.0),Eigen::Vector3d( 2.0, -0.1, 0.4));
   p2->SetBounds(Eigen::Vector3d( 0.1,  0.1, 0.0),Eigen::Vector3d( 2.0,  1.0, 0.4));
   p3->SetBounds(Eigen::Vector3d(-2.0, -1.0, 0.0),Eigen::Vector3d(-0.1, -0.1, 0.4));
   p4->SetBounds(Eigen::Vector3d(-2.0,  0.1, 0.0),Eigen::Vector3d(-0.1,  1.0, 0.4));
+  
+  com->SetBounds(Eigen::Vector3d(-2.0, -1.0, 0.4),Eigen::Vector3d( 2.0, 1.0, 0.6));
  
   Eigen::Vector3d F_max; 
   F_max.setOnes();
@@ -68,12 +72,8 @@ int main()
   // CENTROIDAL DYNAMICS
   auto static_constr = std::make_shared<StaticConstraint>();
   Eigen::Vector6d ext_w;
-  ext_w << 100.0, 0, 0, 0, 0, 0.0;
+  ext_w << 90.0, 20, 0, 0, 0, 0.0;
   static_constr->SetExternalWrench(ext_w);
-  
-  Eigen::Vector3d com;
-  com << -0.1, 0.0, 0.5;
-  static_constr->SetCoM(com);
   
   nlp.AddConstraintSet(static_constr);
   
@@ -148,35 +148,29 @@ int main()
   
   nlp.AddCostSet(cost);
 
-  
   nlp.PrintCurrent();
   
 
   // 2. choose solver and options
   IpoptSolver ipopt;
-//   ipopt.SetOption("linear_solver", "mumps");
-//   ipopt.SetOption("jacobian_approximation", "exact");
-//   ipopt.SetOption("max_iter", 6000);
-//   ipopt.SetOption("tol", 1e-3);
-//   ipopt.SetOption("constr_viol_tol",1e-3);
-//   ipopt.SetOption("mu_strategy", "adaptive");
-//   ipopt.SetOption("bound_relax_factor", 1e4);
   ipopt.SetOption("derivative_test", "first-order");
-//   ipopt.SetOption("derivative_test_tol", 1e-3);
 
 
   // 3 . solve
   ipopt.Solve(nlp);
   Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
   
-  for(int i = 0; i < 4; i++)
-  std::cout<<"n"<< i+1 << ": \n" << x.segment(i*3 + 24, 3).norm() <<std::endl;
+//   for(int i = 0; i < 4; i++)
+//   std::cout<<"n"<< i+1 << ": \n" << x.segment(i*3 + 24, 3).norm() <<std::endl;
+  
+  std::cout<<"com: \n"<< x.tail(3).transpose() <<std::endl;
   
   for(int i = 0; i < 4; i++)
   std::cout<<"p"<< i+1 << ": \n" << x.segment(i*3, 3).transpose() <<std::endl;
 
   for(int i = 0; i < 4; i++)
   std::cout<<"F"<< i+1 << ": \n" << x.segment(i*3 + 12, 3).transpose() <<std::endl;
+  
 
   // 4. test if solution correct
   double eps = 1e-5; //double precision

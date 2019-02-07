@@ -17,8 +17,6 @@ find_package(XCM REQUIRED)
 find_package(trajectory_utils REQUIRED)
 find_package(OpenSoT REQUIRED)
 find_package(PkgConfig)
-pkg_check_modules(CBC REQUIRED cbc)
-pkg_check_modules(OSICBC REQUIRED osi-cbc)
 
 find_package(ifopt REQUIRED)
 
@@ -44,21 +42,15 @@ endif()
 
 # include
 include_directories(include
-                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS} ${CBC_INCLUDE_DIRS} ${OSICBC_INCLUDE_DIRS} /usr/include/eigen3
+                    ${XCM_INCLUDE_DIRS} ${OpenSoT_INCLUDE_DIRS} ${trajectory_utils_INCLUDE_DIRS}  /usr/include/eigen3
                     )
 
 ###########
 ## Build ##
 ###########
 add_library(QPPVMPlugin SHARED src/QPPVMPlugin.cpp include)
-# add_library(ForceAccPlugin SHARED src/ForceAcc.cpp include)
-# add_library(GcompPlugin SHARED src/GcompPlugin.cpp include)
-# add_library(TorqueJump SHARED src/TorqueJump.cpp include)
-#add_executable(ModelValidationTest src/ModelValidationTest.cpp)
 add_library(GcompFixedBase SHARED src/GcompFixedBase.cpp include)
-add_executable(TestGLPK src/GlpkTest.cpp)
-add_executable(ifopt_Test src/ifopt_Test.cpp)
-add_executable(ifopt_contacts_local src/ifopt_contacts_local.cpp)
+add_executable(ifopt_contacts src/ifopt_contacts.cpp)
 
 if ( Xenomai_FOUND )
     set_xeno_flags(GcompFixedBase)
@@ -68,25 +60,15 @@ endif()
 ## Link ##
 ##########
 
-target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${CBC_LIBRARIES} ${OSICBC_LIBRARIES})
-# target_link_libraries(ForceAccPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
-# target_link_libraries(GcompPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
-# target_link_libraries(TorqueJump ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES})
-#target_link_libraries(ModelValidationTest ${XCM_LIBRARIES})
+target_link_libraries(QPPVMPlugin ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES})
 target_link_libraries(GcompFixedBase ${XCM_LIBRARIES})
-target_link_libraries(TestGLPK ${XCM_LIBRARIES} ${OpenSoT_LIBRARIES} ${trajectory_utils_LIBRARIES} ${CBC_LIBRARIES} ${OSICBC_LIBRARIES})
-# target_link_libraries(ExampleCBC ${XCM_LIBRARIES})
-target_link_libraries(ifopt_Test PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES}) 
-target_link_libraries(ifopt_contacts_local PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES}) 
+target_link_libraries(ifopt_contacts PUBLIC ifopt::ifopt_ipopt ${XCM_LIBRARIES}) 
 
 #############
 ## Install ##
 #############
 
 ycm_library_install(QPPVMPlugin 1 0 0)
-# ycm_library_install(ForceAccPlugin 1 0 0)
-# ycm_library_install(GcompPlugin 1 0 0)
-# ycm_library_install(TorqueJump 1 0 0)
 ycm_library_install(GcompFixedBase 1 0 0)
 
 include(AddUninstallTarget)

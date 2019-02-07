@@ -20,9 +20,9 @@ public:
   ExVariables(const std::string& name) : VariableSet(3, name)
   {
     // the initial values where the NLP starts iterating from
-//     x0_ = 0.0;
-//     x1_ = 0.0;
-//     x2_ = 0.0;
+    x0_ = 0.0;
+    x1_ = 0.0;
+    x2_ = 0.0;
     
     lb_.setConstant(-1000.0);
     ub_.setConstant(1000.0);
@@ -167,7 +167,6 @@ public:
     {
         _wrench_ext.setZero();
         _mg << 0.0, 0.0, -100;
-        _com.setZero();
     }
 
     // The constraint value minus the constant value "1", moved to bounds.
@@ -175,13 +174,15 @@ public:
     {
         Eigen::Vector6d value;
         value.setZero();
+	
+	Eigen::Vector3d com = GetVariables()->GetComponent("com")->GetValues();
         
         for(int i : {1, 2, 3, 4})
         {
             Eigen::Vector3d Fi = GetVariables()->GetComponent("F" + std::to_string(i))->GetValues();
             Eigen::Vector3d pi = GetVariables()->GetComponent("p" + std::to_string(i))->GetValues();
             value.head<3>() += Fi;
-            value.tail<3>() += (pi-_com).cross(Fi);
+            value.tail<3>() += (pi-com).cross(Fi);
         }
         
         
@@ -197,11 +198,6 @@ public:
         _wrench_ext = w;
     }
     
-    void SetCoM(const Eigen::Vector3d& com)
-    {
-        _com = com;
-    }
-
     // The only constraint in this set is an equality constraint to 1.
     // Constant values should always be put into GetBounds(), not GetValues().
     // For inequality constraints (<,>), use Bounds(x, inf) or Bounds(-inf, x).
@@ -223,6 +219,9 @@ public:
     void FillJacobianBlock (std::string var_set, Jacobian& jac_block) const override
     {
         jac_block.setZero();
+	
+	Eigen::Vector3d com = GetVariables()->GetComponent("com")->GetValues();
+	
         for(int i = 0; i < 4; i++)
         {
             if(var_set == ("F" + std::to_string(i+1)))
@@ -233,12 +232,12 @@ public:
                 jac_block.coeffRef(2, 2) = 1.0;
                 
                 Eigen::Vector3d pi = GetVariables()->GetComponent("p" + std::to_string(i+1))->GetValues();
-                jac_block.coeffRef(3, 1) = -(pi.z()-_com.z());
-                jac_block.coeffRef(3, 2) =   pi.y()-_com.y();
-                jac_block.coeffRef(4, 0) =   pi.z()-_com.z();
-                jac_block.coeffRef(4, 2) = -(pi.x()-_com.x());
-                jac_block.coeffRef(5, 0) = -(pi.y()-_com.y());
-                jac_block.coeffRef(5, 1) =   pi.x()-_com.x();
+                jac_block.coeffRef(3, 1) = -(pi.z()-com.z());
+                jac_block.coeffRef(3, 2) =   pi.y()-com.y();
+                jac_block.coeffRef(4, 0) =   pi.z()-com.z();
+                jac_block.coeffRef(4, 2) = -(pi.x()-com.x());
+                jac_block.coeffRef(5, 0) = -(pi.y()-com.y());
+                jac_block.coeffRef(5, 1) =   pi.x()-com.x();
             }
             
             if(var_set == ("p" + std::to_string(i+1)))
@@ -250,14 +249,31 @@ public:
                 jac_block.coeffRef(4, 2) =  Fi.x();
                 jac_block.coeffRef(5, 0) =  Fi.y();
                 jac_block.coeffRef(5, 1) = -Fi.x();
-            }
+            }           
         }
+        
+        if(var_set == "com")
+        { 
+	   for(int i : {1, 2, 3, 4})
+	    {
+		Eigen::Vector3d Fi = GetVariables()->GetComponent("F" + std::to_string(i))->GetValues();
+		
+		jac_block.coeffRef(3, 1) -=  Fi.z();
+                jac_block.coeffRef(3, 2) -= -Fi.y();
+                jac_block.coeffRef(4, 0) -= -Fi.z();
+                jac_block.coeffRef(4, 2) -=  Fi.x();
+                jac_block.coeffRef(5, 0) -=  Fi.y();
+                jac_block.coeffRef(5, 1) -= -Fi.x();
+		
+	    }
+        }
+        
     }
     
 private:
     
     Eigen::Vector6d _wrench_ext;
-    Eigen::Vector3d _mg, _com;
+    Eigen::Vector3d _mg;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
