@@ -109,7 +109,6 @@ public:
             {
                 Eigen::Vector3d Fi = GetVariables()->GetComponent("F" + std::to_string(i))->GetValues();
                 Eigen::Vector3d pi = GetVariables()->GetComponent("p" + std::to_string(i))->GetValues();
-                Eigen::Vector3d ni = GetVariables()->GetComponent("n" + std::to_string(i))->GetValues();
                 
                 value += 0.5*_W_p*(pi -_p_ref.segment(3*(i-1),3)).squaredNorm() + 0.5*Fi.squaredNorm();
             } 
